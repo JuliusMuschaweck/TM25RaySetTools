@@ -1,0 +1,10 @@
+/rayfile_LERTDUW_S2WP_20161017_IES_TM25.zip
+/.vs/
+/Debug/
+/Debug/TM25ReadWrite.exe
+/x64/Debug/*.ilk
+/x64/Debug/*.pdb
+/TM25ReadWrite/*.user
+/TM25ReadWrite/*.filters
+/TM25ReadWrite/x64/
+/TM25ReadWrite/Debug/
