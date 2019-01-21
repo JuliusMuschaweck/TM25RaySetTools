@@ -1,5 +1,5 @@
 #include "ReadFile.h"
-
+#include<cstring> // for memcpy
 #include <sys/stat.h>
 
 namespace TM25
@@ -24,11 +24,16 @@ namespace TM25
 		{
 		try
 			{
-			f.open(filename,std::ios_base::in);
+			buf.resize(buf_size);
+			f.open(filename,std::ios_base::in | std::ios_base::binary);
 			if (!f.good())
 				throw std::runtime_error("file not found");
 			pos = 0;
-			maxpos = FileSize(filename);
+			// maxpos = FileSize(filename);
+			buf_pos = 0;
+			buf_end = 0;
+			all_read_from_f = false;
+			Overflow();
 			}
 		catch (std::runtime_error e)
 			{
@@ -53,59 +58,128 @@ namespace TM25
 
 	bool TReadFile::AtEof() const
 		{
-		return f.eof();
+		return all_read_from_f && (buf_pos == buf_end);
 		}
 
 	bool TReadFile::ReadDirectIf(char* t, size_t n)
 		{
-		std::streambuf* buf = f.rdbuf();
-		if (buf && f.good())
+		if (n <= BufAvail())
+			// the easy case: just copy data from buf and advance pos
 			{
-			size_t avail = buf->in_avail();
-			if (maxpos - pos >= n)
-				{
-				size_t nread = buf->sgetn(t, n);
-				avail = buf->in_avail();
-				if (nread != n)
-					{
-					buf->pubseekpos(pos);
-					throw TReadFileError("TReadFile::ReadDirectIf: file too short");
-					}
-				}
-			else
-				throw TReadFileError("TReadFile::ReadDirectIf: file too short");
+			std::memcpy(t, buf.data() + buf_pos, n);
+			Advance(n);
 			}
 		else
+			// insufficient data in buffer
 			{
-			throw TReadFileError("TReadFile::ReadDirectIf: file not open");
+			if (n <= buf_size)
+				// if n <= bufsize fill buffer, copy and advance
+				{
+				Overflow();
+				if (n > BufAvail())
+					throw TReadFileError("TReadFile::ReadDirectIf: file too short");
+				std::memcpy(t, buf.data() + buf_pos, n);
+				Advance(n);
+				}
+			else
+				// n very large, > bufsize, loop through buffers and fill large output
+				{
+				while (n > buf_size)
+					{
+					if (!ReadDirectIf(t, buf_size))
+						throw TReadFileError("TReadFile::ReadDirectIf: file too short");
+					t += buf_size;
+					n -= buf_size;
+					}
+				if (!ReadDirectIf(t, n))
+					throw TReadFileError("TReadFile::ReadDirectIf: file too short");
+				}
 			}
-		pos += n;
 		return true;
 		}
 
 	bool TReadFile::PeekDirectIf(char* t, size_t n)
 		{
-		std::streambuf* buf = f.rdbuf();
-		if (buf && f.good())
+		if (n <= BufAvail())
+			// the easy case: just copy data from buf
 			{
-			if (maxpos - pos >= n)
-				{
-				size_t nread = buf->sgetn(t, n);
-				std::streambuf::off_type signed_n = static_cast<std::streamoff>(nread);
-				buf->pubseekoff( - signed_n, std::ios_base::cur);
-				if (nread != n)
-					{
-					throw TReadFileError("TReadFile::ReadDirectIf: file too short");
-					}
-				}
-			else
-				throw TReadFileError("TReadFile::ReadDirectIf: file too short");
+			std::memcpy(t, buf.data() + buf_pos, n);
 			}
 		else
+			// insufficient data in buffer
 			{
-			throw TReadFileError("TReadFile::ReadDirectIf: file not open");
+			if (n <= buf_size)
+				// if n <= bufsize fill buffer, copy and advance
+				{
+				Overflow();
+				if (n > BufAvail())
+					throw TReadFileError("TReadFile::PeekDirectIf: file too short");
+				std::memcpy(t, buf.data() + buf_pos, n);
+				}
+			else
+				{
+				throw TReadFileError("TReadFile::PeekDirectIf: cannot peek variables larger than "
+					+ std::to_string(buf_size)+" bytes");
+				}
 			}
 		return true;
+		}
+
+	size_t TReadFile::BufAvail() const // bytes remaining in buffer
+		{
+		#ifndef NDEBUG
+		if (buf_pos > buf_end)
+			throw TReadFileError("TReadFile::BufAvail(): buf_pos > buf_end, this cannot happen");
+		#endif		 
+		return buf_end - buf_pos;
+		}
+
+	void TReadFile::Advance(size_t n)
+		{
+		#ifndef NDEBUG
+		if ((buf_pos + n) > buf_end)
+			throw TReadFileError("TReadFile::Advance(): buf_pos + n > buf_end, this cannot happen");
+		#endif		 
+		buf_pos += n;
+		pos += n;
+		}
+
+	void TReadFile::Overflow() // read new data from file and fill buffer
+		{
+		#ifndef NDEBUG
+		if (buf_pos > buf_end)
+			throw TReadFileError("TReadFile::BufAvail(): buf_pos > buf_end, this cannot happen");
+		#endif		 
+		size_t n_remain = buf_end - buf_pos;
+		std::memmove(buf.data(), buf.data() + buf_pos, n_remain);
+		buf_pos = 0;
+		buf_end = n_remain;
+		size_t n_req = buf_size - buf_end;
+		size_t n_read = ReadDirectFromFile(buf.data() + buf_end, n_req);
+		buf_end += n_read;
+		#ifndef NDEBUG
+		if (buf_end > buf_size)
+			throw TReadFileError("TReadFile::BufAvail(): buf_end > buf_size, this cannot happen");
+		#endif		 
+
+		}
+
+	size_t TReadFile::ReadDirectFromFile(char* t, size_t n)
+		{
+		if ((n > 0) && all_read_from_f)
+			throw TReadFileError("TReadFile::ReadDirectFromFile(): trying to read beyond eof, this cannot happen");
+		size_t rv;
+		try
+			{
+			rv = f.rdbuf()->sgetn(t, n);
+			if (rv < n)
+				all_read_from_f = true;
+			}
+		catch (std::runtime_error e)
+			{
+			throw TReadFileError("TReadFile::ReadDirectFromFile(): runtime error " + std::string(e.what()));
+			}
+		return rv;
 		}
 
 	}

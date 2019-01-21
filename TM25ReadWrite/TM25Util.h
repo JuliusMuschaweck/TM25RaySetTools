@@ -2,6 +2,7 @@
 #define __TM25Util_H
 #include <string>
 #include <array>
+#include <vector>
 
 namespace TM25
 	{
@@ -11,6 +12,14 @@ namespace TM25
 
 	template< int N>
 	void AssignChar32ArrayToString(const std::array<char32_t, N>& source, std::u32string& target);
+
+	void AssignChar32ArrayToString(const std::vector<char32_t>& source, std::u32string& target);
+
+
+	std::string ToString(const std::u32string& s, char notranslation = '?');
+
+	std::u32string ToU32String(const std::string& s);
+
 
 
 // template definitions

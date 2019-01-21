@@ -1,9 +1,306 @@
 #include"TM25.h"
 #include <stdexcept>
 #include <limits>
+#include <sstream>
+#include <cassert>
+
 namespace TM25 
 	{
 
+	class TRayItemNames
+		{
+		public:
+			TRayItemNames()
+				{
+				itemStrings[RayItem::x] = U"x";
+				itemStrings[RayItem::y] = U"y";
+				itemStrings[RayItem::z] = U"z";
+				itemStrings[RayItem::kx] = U"kx";
+				itemStrings[RayItem::ky] = U"ky";
+				itemStrings[RayItem::kz] = U"kz";
+				itemStrings[RayItem::phi] = U"phi";
+				itemStrings[RayItem::lambda] = U"lambda";
+				itemStrings[RayItem::Tri_Y] = U"Tri_Y";
+				itemStrings[RayItem::S1] = U"S1";
+				itemStrings[RayItem::S2] = U"S2";
+				itemStrings[RayItem::S3] = U"S3";
+				itemStrings[RayItem::Tri_X] = U"Tri_X";
+				itemStrings[RayItem::Tri_Z] = U"Tri_Z";
+				itemStrings[RayItem::spectrumIdx] = U"spectrumIdx";
+				itemStrings[RayItem::additional] = U"additional";
+				stringItems[U"x"] = RayItem::x;
+				stringItems[U"y"] = RayItem::y;
+				stringItems[U"z"] = RayItem::z;
+				stringItems[U"kx"] = RayItem::kx;
+				stringItems[U"ky"] = RayItem::ky;
+				stringItems[U"kz"] = RayItem::kz;
+				stringItems[U"phi"] = RayItem::phi;
+				stringItems[U"lambda"] = RayItem::lambda;
+				stringItems[U"Tri_Y"] = RayItem::Tri_Y;
+				stringItems[U"S1"] = RayItem::S1;
+				stringItems[U"S2"] = RayItem::S2;
+				stringItems[U"S3"] = RayItem::S3;
+				stringItems[U"Tri_X"] = RayItem::Tri_X;
+				stringItems[U"Tri_Z"] = RayItem::Tri_Z;
+				stringItems[U"spectrumIdx"] = RayItem::spectrumIdx;
+				stringItems[U"additional"] = RayItem::additional;
+
+				};
+			std::map<RayItem, std::u32string> itemStrings;
+			std::map<std::u32string, RayItem> stringItems;
+		};
+
+	const TRayItemNames& RayItemNames()
+		{ // Meyers' singleton
+		static TRayItemNames names;
+		return names;
+		}
+
+	// TRaySetItems implementation
+	std::u32string RayItemToString(RayItem ri)
+		{
+		static auto to_i = [](RayItem rri) { return static_cast<size_t> (rri); };
+		auto name = RayItemNames().itemStrings.find(ri);
+		if (name == RayItemNames().itemStrings.end())
+			{
+			throw TM25Error("RayItemToString: illegal ray item "
+				+ std::to_string(to_i(ri)));
+			}
+		return (*name).second;
+		}
+	// returns U"x", U"y", .. U"additional" 
+
+	RayItem StringToRayItem(const std::u32string& name)
+		{
+		auto ri = RayItemNames().stringItems.find(name);
+		if (ri == RayItemNames().stringItems.end())
+			{
+			throw TM25Error("StringToRayItem: item name " + ToString(name) + " is no standard item name");
+			}
+		return (*ri).second;
+		}
+	// from name: StringToRayItem(RayItemToString(ri)) == ri
+	// throws TM25Error if name does not match 
+
+
+	//	TRaySetItems implementation
+	// a sequence of standard items, 
+	// followed by a sequence of user defined additional items
+			
+	TRaySetItems::TRaySetItems()
+		: nTotal_(0)
+		{
+		stdItems_.fill(false);
+		}; 
+
+	TRaySetItems::TRaySetItems(const TTM25Header& h)
+		: nTotal_(0)
+		{
+		stdItems_.fill(false);
+		MarkAsPresent(RayItem::x);
+		MarkAsPresent(RayItem::y);
+		MarkAsPresent(RayItem::z);
+		MarkAsPresent(RayItem::kx);
+		MarkAsPresent(RayItem::ky);
+		MarkAsPresent(RayItem::kz);
+		if (h.rad_flux_flag_4_7_2_3)
+			MarkAsPresent(RayItem::phi);
+		if (h.lambda_flag_4_7_2_4)
+			MarkAsPresent(RayItem::lambda);
+		if (h.lum_flux_flag_4_7_2_5)
+			MarkAsPresent(RayItem::Tri_Y);
+		if (h.stokes_flag_4_7_2_6)
+			{
+			MarkAsPresent(RayItem::S1);
+			MarkAsPresent(RayItem::S2);
+			MarkAsPresent(RayItem::S3);
+			}
+		if (h.tristimulus_flag_4_7_2_7)
+			{
+			MarkAsPresent(RayItem::Tri_X);
+			MarkAsPresent(RayItem::Tri_Z);
+			}
+		if (h.spectrum_index_flag_4_7_2_8)
+			MarkAsPresent(RayItem::spectrumIdx);
+		for (auto s: h.column_names_4_7_5)
+			AddAdditionalItem(s);
+		}
+
+
+	void TRaySetItems::MarkAsPresent(RayItem ri)
+		{
+		size_t i = CheckRayItem(ri, "MarkAsPresent");
+		if (!stdItems_[i])
+			{
+			stdItems_[i] = true;
+			++nTotal_;
+			}
+		}
+			
+	void TRaySetItems::MarkAsAbsent(RayItem ri)
+		{
+		size_t i = CheckRayItem(ri, "MarkAsAbsent");
+		if (stdItems_[i])
+			{
+			stdItems_[i] = false;
+			--nTotal_;
+			}
+		};
+			
+	void TRaySetItems::AddAdditionalItem(const std::u32string& name)
+		{
+		if (name.empty())
+			throw TM25Error("TRaySetItems::AddAdditionalItem: empty name");
+		if (ContainsAdditionalItem(name))
+			throw TM25Error("TRaySetItems::AddAdditionalItem: duplicate name: "
+				+ ToString(name));
+		additionalItemNames_.push_back(name);
+		++nTotal_;
+		}
+			
+	bool TRaySetItems::IsPresent(RayItem ri) const
+		{
+		size_t i = CheckRayItem(ri, "IsPresent");
+		return stdItems_[i];
+		}
+			
+	size_t TRaySetItems::NStdItems() const // number of standard items present
+		{
+		return nTotal_ - additionalItemNames_.size();
+		}
+			
+	size_t TRaySetItems::NAdditionalItems() const // number of additional items
+		{
+		return additionalItemNames_.size();
+		}
+			
+	size_t TRaySetItems::NTotalItems() const // convenience, sum of std+addtl
+		{
+		return nTotal_;
+		}
+			
+	RayItem TRaySetItems::ItemType(size_t i) const // throw if i >= NTotalItems()
+		{
+		if (i >= nTotal_)
+			{
+			std::stringstream s;
+			s << "TRaySetItems::ItemType: i (" << i << ") >= NTotalItems() ("
+				<< nTotal_ << ")";
+			throw TM25Error(s.str());
+			}
+		if (i >= stdItems_.size())
+			return RayItem::additional;
+		for (size_t j = 0; j < nStdItems; ++j)
+			{
+			if (stdItems_[j])
+				if (i == 0)
+					return static_cast<RayItem>(j);
+				else
+					--i;
+			}
+		throw TM25Error("TRaySetItems::ItemType: logic error, this cannot happen");
+		}
+			
+	std::u32string TRaySetItems::ItemName(size_t i) const
+		{
+		if (i >= nTotal_)
+			{
+			std::stringstream s;
+			s << "TRaySetItems::ItemName: i (" << i << ") >= NTotalItems() ("
+				<< nTotal_ << ")";
+			throw TM25Error(s.str());
+			}
+		if (i >= stdItems_.size())
+			return additionalItemNames_[i - stdItems_.size()];
+		for (size_t j = 0; j < nStdItems; ++j)
+			{
+			if (stdItems_[j])
+				if (i == 0)
+					return RayItemToString(static_cast<RayItem>(j));
+				else
+					--i;
+			}
+		throw TM25Error("TRaySetItems::ItemName: logic error, this cannot happen");
+		}
+				
+	bool TRaySetItems::ContainsItems(const TRaySetItems& rhs) const
+		{
+		for (size_t j = 0; j < nStdItems; ++j)
+			if (rhs.stdItems_[j] && !(stdItems_[j]))
+				return false;
+		for (auto s : rhs.additionalItemNames_)
+			{
+			if (!ContainsAdditionalItem(s))
+				return false;
+			}
+		return true;
+		}
+			
+	bool TRaySetItems::ContainsAdditionalItem(const std::u32string& name) const
+		{
+		return
+			std::find(additionalItemNames_.begin(), additionalItemNames_.end(), name)
+			!= additionalItemNames_.end();
+		}
+			
+	TRaySetItems::TExtractionMap TRaySetItems::ExtractionMap(
+		const TRaySetItems& rhs) const
+		{
+		if (!ContainsItems(rhs))
+			throw TM25Error("TRaySetItems::ExtractionMap: ContainsItems(rhs) == false");
+		// using TExtractionMap = std::vector<size_t>;
+		TExtractionMap rv;
+		size_t thisIdx = 0;
+		for (size_t j = 0; j < nStdItems; ++j)
+			{
+			if (stdItems_[j])
+				{
+				if (rhs.stdItems_[j])
+					rv.push_back(thisIdx);
+				++thisIdx;
+				}
+			}
+		size_t nStd = nTotal_ - additionalItemNames_.size();
+		if (thisIdx != nStd) 
+			throw TM25Error("TRaySetItems::ExtractionMap: thisIdx != nStd, this cannot happen");
+		for (auto s : rhs.additionalItemNames_)
+			{
+			for (size_t j = 0; j < additionalItemNames_.size(); ++j)
+				{
+				if (s == additionalItemNames_[j])
+					rv.push_back(nStd + j);
+				}
+			}
+		if (rv.size() != rhs.NTotalItems()) 
+			throw TM25Error("TRaySetItems::ExtractionMap: rv.size() != rhs.NTotalItems(), this cannot happen");
+		return rv;
+		}
+			// returns array of indices of this, throws TM25Error 
+			// if Contains(rhs) == false
+			// to be used in call to TRaySet::Extract
+	std::array<size_t, nStdItems> TRaySetItems::ItemIndices() const
+		{
+		std::array<size_t, nStdItems> rv;
+		rv.fill(absent);
+		size_t idx = 0;
+		for (size_t i = 0; i < nStdItems; ++i)
+			{
+			if (stdItems_[i])
+				rv[i] = idx++;
+			}
+		return rv;
+		}
+
+	size_t TRaySetItems::CheckRayItem(RayItem ri, const std::string& fn) const
+		{
+		size_t rv = static_cast<size_t>(ri);
+		if (rv >= stdItems_.size())
+			throw TM25Error("TRaySetItems::" + fn + ": illegal RayItem: "
+				+ std::to_string(rv));
+		return rv;
+		}
+
+	// TTM25Header implementation
 	TTM25Header::TTM25Header()
 		{
 		version_4_7_1_2 = 2013; // must be
@@ -48,25 +345,126 @@ namespace TM25
 		// std::u32string	additional_text_4_7_6;
 		}
 
-	float* TDefaultRayArray::get(const size_t pos, const  size_t num)
+// ********************************************************************
+	// TDefaultRayArray implementation
+	TDefaultRayArray::TDefaultRayArray()
+		: nRays_(0), nItems_(0) {};
+
+	TDefaultRayArray::TDefaultRayArray(size_t nRays, size_t nItems)
+		: nRays_(nRays), nItems_(nItems), 
+		data_(nRays * nItems, std::numeric_limits<float>::signaling_NaN()) {};
+	
+	void TDefaultRayArray::Resize(size_t nRays, size_t nItems)
 		{
-		if ((pos + num) < data.size())
-			return data.data() + pos;
-		else
-			throw std::runtime_error("TDefaultRayArray::get: pos + num out of bounds");
+		Clear();
+		nRays_ = nRays;
+		nItems_ = nItems;
+		data_.resize(nRays * nItems);
+		std::fill(data_.begin(), data_.end(), std::numeric_limits<float>::signaling_NaN());
+		};
+
+	void TDefaultRayArray::Clear()
+		{
+		nRays_ = nItems_ = 0;
+		std::vector<float> tmp;
+		data_.swap(tmp); // make sure previous storage is really deallocated
 		}
 
-	const float* TDefaultRayArray::get(const size_t pos, const size_t num) const
+	size_t TDefaultRayArray::NRays() const
 		{
-		if ((pos + num) < data.size())
-			return data.data() + pos;
-		else
-			throw std::runtime_error("TDefaultRayArray::get: pos + num out of bounds");
+		return nRays_;
+		}
+	size_t TDefaultRayArray::NItems() const
+		{
+		return nItems_;
 		}
 
-	void TDefaultRayArray::resize(const size_t num)
+	void TDefaultRayArray::SetRay(size_t i, const std::vector<float>& ray)
 		{
-		data.resize(num);
+		if (i >= nRays_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::SetRay: i (" << i << ") >= NRays() (" << nRays_ << ")";
+			throw TM25Error(s.str());
+			}
+		if (ray.size() != nItems_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::SetRay: ray.size() (" << ray.size() << 
+				") != NItems() (" << nItems_ << ")";
+			throw TM25Error(s.str());
+			}
+		std::copy(ray.begin(), ray.end(), data_.begin() + i * NItems());
+		}
+
+	void TDefaultRayArray::SetItem(size_t j, const std::vector<float>& item)
+		{
+		if (j >= nItems_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::SetItem: j (" << j << ") >= NItems() (" << nItems_ << ")";
+			throw TM25Error(s.str());
+			}
+		if (item.size() != nRays_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::SetItem: item.size() (" << item.size() <<
+				") != NRays() (" << nRays_ << ")";
+			throw TM25Error(s.str());
+			}
+		auto i_item = item.begin();
+		for (size_t i = 0; i < nRays_; ++i)
+			data_[i * nItems_ + j] = *(i_item++);
+		}
+
+	void TDefaultRayArray::SetRayItem(size_t iray, size_t jitem, float r)
+		{
+		if (iray >= nRays_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::SetRayItem: iray (" << iray << ") >= NRays() (" 
+				<< nRays_ << ")";
+			throw TM25Error(s.str());
+			}
+		if (jitem >= nItems_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::SetRayItem: jitem (" << jitem << ") >= NItems() (" 
+				<< nItems_ << ")";
+			throw TM25Error(s.str());
+			}
+		data_[iray * nItems_ + jitem] = r;
+		}
+
+	std::vector<float> TDefaultRayArray::GetRay(size_t i) const
+		{
+		if (i >= nRays_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::GetRay: i (" << i << ") >= NRays() ("
+				<< nRays_ << ")";
+			throw TM25Error(s.str());
+			}
+		std::vector<float> rv(nItems_);
+		std::copy(data_.begin() + i * nItems_, data_.begin() + (i + 1) * nItems_, rv.begin());
+		return rv;
+		}
+
+	const float* TDefaultRayArray::GetRayDirect(size_t i) const
+		{
+		if (i >= nRays_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::GetRayDirect: i (" << i << ") >= NRays() ("
+				<< nRays_ << ")";
+			throw TM25Error(s.str());
+			}
+		return data_.data() + i * nItems_;
+		}
+
+	const std::vector<float>& TDefaultRayArray::Data() const
+		{
+		return data_;
 		}
 
 	}

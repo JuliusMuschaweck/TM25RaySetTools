@@ -36,18 +36,18 @@ namespace TM25
 			// may throw if file not open or too short
 
 			template<typename T>
+			void Read(std::vector<T>& v, const size_t n);
+			// read and assign a vector size n of T from its binary representation
+			// advance file position
+			// use when n is known at run time only
+			// may throw if file not open or too short
+
+			template<typename T>
 			T Peek();
 			// read and return a T from its binary representation
 			// do not advance file position
 			// may throw if file not open or too short
-
-			
-			template<typename T>
-			bool PeekOk();
-			// check if file is long enough
-			// do not advance file position
-			// does not throw
-
+		
 			template<size_t N>
 			std::array<char, N> ReadBytes();
 			// read and return an array<N> of char from its binary representation
@@ -88,10 +88,23 @@ namespace TM25
 			// read n char's from binary representation
 			// advance file position
 			// t must point to sufficient memory
-			// returns true on success, false if file not open or too short
+			// returns true on success, throws TM25Error if file not open or too short
 			bool PeekDirectIf(char* t, size_t n);
-			size_t pos;
-			size_t maxpos;
+			
+			size_t BufAvail() const; // bytes remaining in buffer
+			void Advance(size_t n);
+			void Overflow(); // read new data from file and fill buffer
+
+			size_t ReadDirectFromFile(char* t, size_t n); // return bytes read
+
+			size_t pos; // position in the file.
+			// size_t maxpos; // max. position in the file == file size
+			size_t buf_pos; // position in the buffer buf
+			size_t buf_end; // max. position in the buffer + 1, < bufsize iff eof has been loaded
+			bool all_read_from_f; // true if reading from f has reached eof;
+			static const size_t buf_size = 10 * 1024 * 1024; // read chunks of 10 MB;
+			// static constexpr size_t overlap_size = 1024 * 1024; // 1 MB overlap
+			std::vector<char> buf;
 			std::ifstream f;
 		};
 
@@ -134,10 +147,17 @@ namespace TM25
 	std::vector<T> TReadFile::Read(const size_t n)
 		{
 		std::vector<T> rv(n);
-		char* p = reinterpret_cast<char*>(&(rv[0]));
+		Read<T>(rv, n);
+		return rv;
+		}
+
+	template<typename T>
+	void TReadFile::Read(std::vector<T>& v, const size_t n)
+		{
+		v.resize(n);
+		char* p = reinterpret_cast<char*>(&(v[0]));
 		if (!ReadDirectIf(p, n * sizeof(T)))
 			throw TReadFileError("TReadFile::Read: failed");
-		return rv;
 		}
 
 	template<typename T>
@@ -148,12 +168,6 @@ namespace TM25
 		if (!PeekDirectIf(p, sizeof(T)))
 			throw TReadFileError("TReadFile::Peek: failed");
 		return rv;
-		}
-
-	template<typename T>
-	bool TReadFile::PeekOk()
-		{
-		return (maxpos - pos) >= sizeof(T);
 		}
 
 	template<size_t N>
