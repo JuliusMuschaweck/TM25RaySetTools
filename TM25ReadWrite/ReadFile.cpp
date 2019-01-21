@@ -1,3 +1,11 @@
+/******************************************************************
+Provided by Julius Muschaweck, JMO GmbH, Gauting to the public domain
+under the Unlicense, see unlicense.txt in the repository
+or http://unlicense.org/
+2019-01-19
+******************************************************************/
+// implementation of non-template functions of ReadFile.h
+
 #include "ReadFile.h"
 #include<cstring> // for memcpy
 #include <sys/stat.h>

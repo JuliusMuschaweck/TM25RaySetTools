@@ -1,3 +1,21 @@
+/******************************************************************
+Provided by Julius Muschaweck, JMO GmbH, Gauting to the public domain
+under the Unlicense, see unlicense.txt in the repository
+or http://unlicense.org/ 
+2019-01-19
+******************************************************************/
+// ReadFile.h 
+// class TReadFile provides read access to large binary files
+// template functions allow type safe reading of nearly any type
+// TReadFile uses an internal buffer, reading data from file in chunks
+// of static const size_t buf_size, currently 10 MB.
+// On a standard desktop PC, it took about 2 seconds to read 500 MB
+// of floats, including the sanity checking of the content.
+
+// Error handling: Throws TReadFileError : public std::runtime_error
+// if file cannot be opend, is not open when reading, or too short.
+
+
 #ifndef __ReadFile_H
 #define __ReadFile_H
 #include <string>

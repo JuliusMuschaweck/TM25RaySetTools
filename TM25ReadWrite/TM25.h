@@ -1,3 +1,11 @@
+/******************************************************************
+Provided by Julius Muschaweck, JMO GmbH, Gauting to the public domain
+under the Unlicense, see unlicense.txt in the repository
+or http://unlicense.org/
+2019-01-19
+******************************************************************/
+// TM25.h: The core functionality to read and write TM25 ray files.
+
 #ifndef __TM25_H
 #define __TM25_H
 #include<string>

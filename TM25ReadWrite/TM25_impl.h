@@ -1,3 +1,10 @@
+/******************************************************************
+Provided by Julius Muschaweck, JMO GmbH, Gauting to the public domain
+under the Unlicense, see unlicense.txt in the repository
+or http://unlicense.org/
+2019-01-19
+******************************************************************/
+
 // template definitions
 // to be included by TM25.h
 
