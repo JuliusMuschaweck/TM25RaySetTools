@@ -29,13 +29,135 @@ namespace KDTree
 		// construct root node
 		nodes_.reserve(2 * pts_.size() - 1);
 		TNode root = RootNode();
-		TIdx iRoot = AddNode(root);
+		TNodeIdx iRoot = AddNode(root);
 		PushWork(iRoot);
 		while (!work_.empty())
 			SplitNext();
-		TIdx ii = 0;
+		TIdxIdx ii{ 0 };
+		for (TPointIdx i : idx_)
+			{
+			ReverseIndex(i) = ii;
+			++(ii.ii_);
+			}
+		}
+
+	void TKDTree::CheckConsistency() const
+		{
+		auto Check = [](bool test, std::string message)
+			{
+			if (!test) 
+				throw std::runtime_error("TKDTree::CheckConsistency: " + message); 
+			};
+		// uint32 can hold # of points
+		Check(pts_.size() < std::numeric_limits<TIdx>::max(), "too many points");
+		// ptCoords_ = transpose(pts_)
+		size_t npts = pts_.size();
+		for (size_t i = 0; i < Def::dim; ++i)
+			{
+			Check(npts == ptCoords_[i].size(), "ptCoords_ has wrong dimension");
+			for (size_t j = 0; j < npts; ++j)
+				Check(ptCoords_[i][j] == pts_[j][i], "ptCoords_ is not pts_ transposed");
+			}
+		// all pts within bounding box
+		for (size_t j = 0; j < npts; ++j)
+			Check(IsInBox(boundingBox_, pts_[j]), "point outside bounding box");
+		Check(idx_.size() == npts, "idx_ has wrong size");
+		// idx_ is a complete permutation of 0..n-1
+		{
+		std::vector<int>  ni(npts, 0);
 		for (auto i : idx_)
-			reverseIdx_[i] = ii++;
+			{
+			Check(i.pi_ < npts, "idx_ contains illegal value");
+			ni[i.pi_] += 1;
+			}
+		for (auto i : ni)
+			Check(i == 1, "idx_ is not a complete permutation of 0..npts-1");
+		}
+		// reverseIdx_ is reverse permutation of idx_
+		Check(reverseIdx_.size() == npts, "reverseIdx_ has wrong size");
+		// idx_ is a complete permutation of 0..n-1
+		{
+		std::vector<int>  nri(npts, 0);
+		for (auto ri : reverseIdx_)
+			{
+			Check(ri.ii_ < npts, "reverseIdx_ contains illegal value");
+			Check(reverseIdx_[idx_[ri.ii_].pi_].ii_ == ri.ii_, "reverseIdx_ is not inverse permutation of idx_");
+			}
+		}
+		// node structure forms proper tree:
+		//		by traversing tree all nodes are visited exactly once
+		//		childs have correct mother
+		//		endpt_ - beginpt_ >= 1
+		//		endpt_ < nPoints
+		//		each point is contained in exactly one leaf node
+		//		# of leaf nodes == # of points
+		//		all points are within corner0_ and corner1_
+		//		splitDim_ < dim
+		//		isEdgeNode_ matches with child's 
+		Check(nodes_.size() < std::numeric_limits<TIdx>::max(), "too many nodes");
+		{
+		std::vector<int>  nni(nodes_.size(), 0);
+		std::vector<int>  nii(npts, 0);
+		std::stack<TIdx> work;
+		auto DoNode = [this, &nni, &nii, npts, &work, &Check](TIdx i)
+			{
+			nni[i] += 1;
+			const TNode& node = this->Nodes()[i];
+			if (node.lowChildNode_.ni_ != Def::invalidIdx)
+				{
+				work.push(node.lowChildNode_.ni_);
+				Check(this->Nodes()[node.lowChildNode_.ni_].motherNode_.ni_ == i, "child node has wrong mother");
+				}
+			if (node.hiChildNode_.ni_ != Def::invalidIdx)
+				{
+				work.push(node.hiChildNode_.ni_);
+				Check(this->Nodes()[node.hiChildNode_.ni_].motherNode_.ni_ == i, "child node has wrong mother");
+				}
+			Check(node.endpt_.ii_ > node.beginpt_.ii_, "node: endpt must be > beginpt");
+			Check(node.endpt_.ii_ <= npts, "node: endpt > npts");
+			if (node.IsLeaf())
+				{
+				nii[node.beginpt_.ii_] += 1;
+				Check((node.lowChildNode_.ni_ == Def::invalidIdx) && (node.hiChildNode_.ni_ == Def::invalidIdx),
+					"node: Leaf nodes must not have child nodes");
+				}
+			else
+				{
+				Check((node.lowChildNode_.ni_ != Def::invalidIdx) && (node.hiChildNode_.ni_ != Def::invalidIdx),
+					"node: Non-Leaf nodes must have child nodes");
+				}
+			for (TIdx i = node.beginpt_.ii_; i < node.endpt_.ii_; ++i)
+				{
+				TKDPoint pt = pts_[Index()[i].pi_];
+				for (int idim = 0; idim < Def::dim; ++idim)
+					Check((node.corner0_[idim] <= pt[idim]) && (node.corner1_[idim] >= pt[idim]), "node: points must be in corner0_, corner1_ box");
+				}
+			Check(node.splitDim_ < Def::dim, "node: splitDim_ too large");
+
+			};
+		work.push(0);
+		while (!work.empty())
+			{
+			TIdx next = work.top();
+			work.pop();
+			DoNode(next);
+			}
+		for (auto i : nni)
+			Check(i == 1, "Nodes must appear exactly once in tree");
+		for (auto i: nii)
+			Check(i == 1, "Each point must appear exactly once in a leaf node");
+		}
+		// nodeIdx_ points to nodes which are leaf nodes and actually contain the point
+		Check(NodeIndex().size() == npts, "nodeIndex_ must have npts entries");
+		TPointIdx pi{ 0 };
+		for (auto ni : NodeIndex())
+			{
+			const TNode& node = Node(ni);
+			Check(node.IsLeaf(), "nodes in nodeIndex_ must be leaf nodes");
+			Check(Index(node.beginpt_).pi_ == (pi.pi_)++, "node in noneIndex_ does not point to correct point");
+			}
+		// work_ is empty
+		Check(work_.empty(), "work_ is not empty");
 		}
 
 	void TKDTree::ShrinkEdgeNodes(TReal fac)
@@ -48,7 +170,7 @@ namespace KDTree
 			{
 			if (nd.IsLeaf() && (nd.isEdgeNode_ != 0x0000))
 				{
-				TKDPoint pt = pts_[idx_[nd.beginpt_]];
+				TKDPoint pt = Point(Index(nd.beginpt_));
 				std::uint16_t lo = 0x0001;
 				std::uint16_t hi = 0x0100;
 				for (int i = 0; i < dim; ++i)
@@ -75,14 +197,19 @@ namespace KDTree
 		// TODO: insert return statement here
 		}
 
-	const Def::TIdxArray & TKDTree::Index() const
+	const Def::TPointIdxArray & TKDTree::Index() const
 		{
 		return idx_;
 		}
 
-	const Def::TIdxArray & TKDTree::ReverseIndex() const
+	const Def::TIdxIdxArray & TKDTree::ReverseIndex() const
 		{
 		return reverseIdx_;
+		}
+
+	const TKDTree::TNodeIdxArray & TKDTree::NodeIndex() const
+		{
+		return nodeIdx_;
 		}
 
 	std::pair<Def::TKDPoint, Def::TKDPoint> TKDTree::BoundingBox() const
@@ -90,55 +217,55 @@ namespace KDTree
 		return boundingBox_;
 		}
 
-	Def::TIdx TKDTree::Locate(const TKDPoint & pt) const
+	Def::TNodeIdx TKDTree::Locate(const TKDPoint & pt) const
 		{
 		const TNode* nd = &(nodes_[0]);
 		for (int i = 0; i < dim; ++i)
 			{
 			if (pt[i] < nd->corner0_[i] || pt[i] > nd->corner1_[i])
 				{
-				return invalidIdx;
+				return TNodeIdx{ invalidIdx };
 				}
 			}
-		TIdx idx = 0;
+		TNodeIdx idx{ 0 };
 		while (!(nd->IsLeaf()))
 			{
 			size_t sd = nd->splitDim_;
-			if (pt[sd] < nodes_[nd->lowChildNode_].corner1_[sd])
+			if (pt[sd] < Node(nd->lowChildNode_).corner1_[sd])
 				idx = nd->lowChildNode_;
 			else
 				idx = nd->hiChildNode_;
-			nd = &(nodes_[idx]);
+			nd = &(Node(idx));
 			}
 		return idx;
 		}
 
-	Def::TIdx TKDTree::Locate(TIdx i) const
+	Def::TNodeIdx TKDTree::Locate(TPointIdx pi) const
 		{
-		if (i >= pts_.size())
-			return invalidIdx;
-		TIdx ri = reverseIdx_[i];
-		TIdx nb = 0;
-		while (!(nodes_[nb].IsLeaf()))
+		if (pi.pi_ >= pts_.size())
+			return TNodeIdx{ invalidIdx };
+		TIdxIdx ri = ReverseIndex(pi);
+		TNodeIdx nb{ 0 };
+		while (!(Node(nb).IsLeaf()))
 			{
-			TIdx dlo = nodes_[nb].lowChildNode_;
-			if (ri < nodes_[dlo].endpt_)
+			TNodeIdx dlo = Node(nb).lowChildNode_;
+			if (ri.ii_ < Node(dlo).endpt_.ii_)
 				nb = dlo;
 			else
-				nb = nodes_[nb].hiChildNode_;
+				nb = Node(nb).hiChildNode_;
 			}
 		return nb;
 		}
 
 	// return the index of the nearest node with >= n points if pt is outside bounding box of all nodes
-	Def::TIdx ClosestNodeIndex(const TKDTree::TNodeArray& nodes, const Def::TKDPoint & pt, Def::TIdx n)
+	Def::TNodeIdx ClosestNodeIndex(const TKDTree::TNodeArray& nodes, const Def::TKDPoint & pt, Def::TIdx n)
 		{
-		Def::TIdx inode = 0;
+		Def::TNodeIdx inode{ 0 };
 		for (;;)
 			{
-			const TNode& thisnode = nodes[inode];
-			const TNode& lonode = nodes[thisnode.lowChildNode_];
-			const TNode& hinode = nodes[thisnode.hiChildNode_];
+			const TNode& thisnode = nodes[inode.ni_];
+			const TNode& lonode = nodes[thisnode.lowChildNode_.ni_];
+			const TNode& hinode = nodes[thisnode.hiChildNode_.ni_];
 			if (lonode.NPoints() < n && hinode.NPoints() < n)
 				break;
 			Def::TReal distlo = lonode.Distance(pt);
@@ -194,8 +321,8 @@ namespace KDTree
 		{
 		if (n >= pts_.size())
 			throw std::runtime_error("TKDTree::NearestNeighbors: too many points requested");
-		TIdx inode = Locate(pt);
-		if (inode == invalidIdx)
+		TNodeIdx inode = Locate(pt);
+		if (inode.ni_ == invalidIdx)
 			{ // pt is outside the bounding box
 			// look for closest box with >= n points
 			inode = ClosestNodeIndex(nodes_, pt, n);
@@ -203,68 +330,68 @@ namespace KDTree
 		return NearestNeighborsOfNode(inode, pt, n);
 		}
 
-	TKDTree::TNearestNeighbors TKDTree::NearestNeighborsOfPoint(TIdx ipoint, TIdx n) const
+	TKDTree::TNearestNeighbors TKDTree::NearestNeighborsOfPoint(TPointIdx ipoint, TIdx n) const
 		{
-		if (ipoint >= pts_.size())
+		if (ipoint.pi_ >= pts_.size())
 			throw std::runtime_error("TKDTree::NearestNeighborsOfPoint: ipoint > npoints");
-		TIdx inode = ReverseIndex()[ipoint];
-		return NearestNeighborsOfNode(inode, pts_[ipoint], n);
+		TNodeIdx inode = NodeIndex(ipoint);
+		return NearestNeighborsOfNode(inode, pts_[ipoint.pi_], n);
 		}
 
-	TKDTree::TNearestNeighbors TKDTree::NearestNeighborsOfNode(TIdx inode, TIdx n) const
+	TKDTree::TNearestNeighbors TKDTree::NearestNeighborsOfNode(TNodeIdx inode, TIdx n) const
 		{
 		// use center point of node
-		const TNode& node = nodes_[inode];
+		const TNode& node = Node(inode);
 		const TKDPoint& lo = node.corner0_;
 		const TKDPoint& hi = node.corner1_;
-		TKDPoint pt{ 0.5*(lo[0] + hi[0]),0.5*(lo[1] + hi[1]), 0.5*(lo[2] + hi[2]), 0.5*(lo[3] + hi[3]) };
+		TKDPoint pt{ 0.5f*(lo[0] + hi[0]),0.5f*(lo[1] + hi[1]), 0.5f*(lo[2] + hi[2]), 0.5f*(lo[3] + hi[3]) };
 		return NearestNeighborsOfNode(inode, pt, n);
 		}
 
-	TKDTree::TNearestNeighbors TKDTree::NearestNeighborsOfNode(TIdx inode, const TKDPoint& pt, TIdx n) const
+	TKDTree::TNearestNeighbors TKDTree::NearestNeighborsOfNode(TNodeIdx inode, const TKDPoint& pt, TIdx n) const
 		{
-		if (inode == invalidIdx)
+		if (inode.ni_ == invalidIdx)
 			throw std::runtime_error("TKDTree::NearestNeighborsOfNode: invalidIdx");
-		if (inode >= nodes_.size())
+		if (inode.ni_ >= nodes_.size())
 			throw std::runtime_error("TKDTree::NearestNeighborsOfNode: inode out of range");
 		// find smallest mother box with n points
-		while (nodes_[inode].NPoints() < n)
-			inode = nodes_[inode].motherNode_;
+		while (Node(inode).NPoints() < n)
+			inode = Node(inode).motherNode_;
 		// now inode points to nearest box with >= n points
 		// select n nearest within this, as heap
-		const TNode& nd = nodes_[inode];
+		const TNode& nd = Node(inode);
 		TNearestNeighbors rv(n); // filled with BIG and invalid indices
-		for (TIdx ipt = nd.beginpt_; ipt < nd.endpt_; ++ipt)
+		for (TIdxIdx ipt = nd.beginpt_; ipt.ii_ < nd.endpt_.ii_; ++(ipt.ii_))
 			{
-			const TKDPoint& thispt = pts_[idx_[ipt]];
+			const TKDPoint& thispt = Point(Index(ipt));
 			TReal d = Distance(thispt, pt);
 			if (d < rv.distances_[0])
 				{
 				// replace top of heap with new values
 				rv.distances_[0] = d;
-				rv.i_points_[0] = idx_[ipt];
-				rv.i_nodes_[0] = nodeIdx_[idx_[ipt]];
+				rv.i_points_[0] = Index(ipt);
+				rv.i_nodes_[0] = NodeIndex(Index(ipt));
 				if (n > 1)
 					Heapify(rv, n); // maintain heap structure
 				}
 			}
 		// rv is filled with heap of n candidate points, all from same box
 		// now traverse tree, considering only potentially better boxes
-		std::stack<TIdx> task;
-		task.push(0); // start working with top node
+		std::stack<TNodeIdx> task;
+		task.push(TNodeIdx{ 0 }); // start working with top node
 		while (!task.empty())
 			{
-			TIdx itodo = task.top();
+			TNodeIdx itodo = task.top();
 			task.pop();
-			if (itodo == inode) // this whole node is taken care of already
+			if (itodo.ni_ == inode.ni_) // this whole node is taken care of already
 				continue;
-			const TNode& nTodo = nodes_[itodo];
+			const TNode& nTodo = Node(itodo);
 			if (nTodo.Distance(pt) < rv.distances_[0]) // skip whole node if too far away
 				{ // candidate node
 				if (nTodo.IsLeaf())
 					{ // consider point
-					TIdx ipt = idx_[nTodo.beginpt_];
-					TReal d = Distance(pts_[ipt], pt);
+					TPointIdx ipt = Index(nTodo.beginpt_);
+					TReal d = Distance(Point(ipt), pt);
 					if (d < rv.distances_[0])
 						{// replace top of heap with new values
 						rv.distances_[0] = d;
@@ -295,12 +422,12 @@ namespace KDTree
 		return rv;
 		}
 
-	Def::TReal TKDTree::TotalVolume(const TIdxArray & inodes) const
+	Def::TReal TKDTree::TotalVolume(const TNodeIdxArray & inodes) const
 		{
 		TReal rv = 0;
-		for (auto i : inodes)
+		for (TNodeIdx i : inodes)
 			{
-			rv += nodes_[i].Volume();
+			rv += Node(i).Volume();
 			}
 		return rv;
 		}
@@ -308,10 +435,22 @@ namespace KDTree
 	void TKDTree::Init()
 		{
 		idx_.resize(pts_.size());
-		std::iota(idx_.begin(), idx_.end(), 0);
-		reverseIdx_ = idx_;
+		// std::iota(idx_.begin(), idx_.end(), 0);
+		TIdx iota = 0;
+		for (TPointIdx& pi : idx_)
+			{
+			pi.pi_ = iota++;
+			}
+		//reverseIdx_ = idx_;
+		reverseIdx_.resize(pts_.size());
+		// std::iota(idx_.begin(), idx_.end(), 0);
+		iota = 0;
+		for (TIdxIdx& ii : reverseIdx_)
+			{
+			ii.ii_ = iota++;
+			}
 		nodeIdx_.resize(pts_.size());
-		std::fill(nodeIdx_.begin(), nodeIdx_.end(), invalidIdx);
+		std::fill(nodeIdx_.begin(), nodeIdx_.end(), TNodeIdx{ invalidIdx });
 		for (size_t d = 0; d < Def::dim; ++d)
 			ptCoords_[d].reserve(pts_.size());
 		Def::TReal big = std::numeric_limits<Def::TReal>::max();
@@ -333,8 +472,8 @@ namespace KDTree
 	TNode TKDTree::RootNode()
 		{
 		TNode root;
-		root.beginpt_ = 0;
-		root.endpt_ = static_cast<TIdx>(pts_.size());
+		root.beginpt_ = TIdxIdx{ 0 };
+		root.endpt_ = TIdxIdx{ static_cast<TIdx>(pts_.size()) };
 		std::tie(root.corner0_, root.corner1_) = KDTree::BoundingBox(pts_);
 		Def::TReal avgPtsPerDim = pow(static_cast<Def::TReal>(pts_.size()), static_cast<Def::TReal>(1.0 / Def::dim));
 		for (int i = 0; i < Def::dim; ++i)
@@ -343,37 +482,37 @@ namespace KDTree
 			root.corner0_[i] -= d;
 			root.corner1_[i] += d;
 			}
-		root.motherNode_ = Def::invalidIdx; // root node is the only node w/o mother
-		root.lowChildNode_ = Def::invalidIdx; // will be created later
-		root.hiChildNode_ = Def::invalidIdx; // will be created later
+		root.motherNode_ = TNodeIdx{ Def::invalidIdx }; // root node is the only node w/o mother
+		root.lowChildNode_ = TNodeIdx{ Def::invalidIdx }; // will be created later
+		root.hiChildNode_ = TNodeIdx{ Def::invalidIdx }; // will be created later
 		root.splitDim_ = 0; // we start with splitting along dimension 1
 		std::array<uint16_t, 9> edgeFlags = { 0x0000, 0x0101, 0x0303, 0x0707, 0x0f0f, 0x1f1f, 0x3f3f, 0x7f7f, 0xffff };
 		root.isEdgeNode_ = edgeFlags[dim];
 		return root;
 		}
 
-	Def::TIdx TKDTree::AddNode(const TNode & n)
+	Def::TNodeIdx TKDTree::AddNode(const TNode & n)
 		{
 		// std::lock_guard<std::mutex> lock(mutex_);
 		// this is where thread safe node adding may come in, e.g. by locking a mutex
 		nodes_.push_back(n);
-		return static_cast<TIdx>(nodes_.size()) - 1;
+		return TNodeIdx{ static_cast<TIdx>(nodes_.size()) - 1 };
 		}
 
-	void TKDTree::SetChildNodes(TIdx mother, TIdx loChild, TIdx hiChild)
+	void TKDTree::SetChildNodes(TNodeIdx mother, TNodeIdx loChild, TNodeIdx hiChild)
 		{
-		nodes_[mother].lowChildNode_ = loChild;
-		nodes_[mother].hiChildNode_ = hiChild;
+		Node(mother).lowChildNode_ = loChild;
+		Node(mother).hiChildNode_ = hiChild;
 		}
 
-	void TKDTree::PushWork(TIdx iNode)
+	void TKDTree::PushWork(TNodeIdx iNode)
 		{
 		work_.push(iNode);
 		}
 
-	Def::TIdx TKDTree::PopWork()
+	Def::TNodeIdx TKDTree::PopWork()
 		{
-		Def::TIdx rv{ work_.top() };
+		Def::TNodeIdx rv{ work_.top() };
 		work_.pop();
 		return rv;
 		}
@@ -381,24 +520,24 @@ namespace KDTree
 	void TKDTree::SplitNext()
 		{
 		// retrieve node to work on
-		TIdx next = PopWork();
-		TNode node = nodes_[next];
+		TNodeIdx next = PopWork();
+		TNode node = Node(next);
 		// the coordinates according to which the split shall occur
 		#ifndef NDEBUG
 		// std::cout << "working on node " << next << '\n';
 		#endif
 		const std::vector<Def::TReal>& coords = ptCoords_[node.splitDim_];
 		// the range of indices to be split
-		TIdx nPts = node.endpt_ - node.beginpt_;
+		TIdx nPts = node.endpt_.ii_ - node.beginpt_.ii_;
 		assert(nPts >= 2);
-		auto ibegin = idx_.begin() + node.beginpt_;
-		auto iend = idx_.begin() + node.endpt_;
+		auto ibegin = idx_.begin() + node.beginpt_.ii_;
+		auto iend = idx_.begin() + node.endpt_.ii_;
 		auto imid = ibegin + nPts/2;
 		// the comparison function for nth_element
-		auto comp = [&coords](TIdx i1, TIdx i2) -> bool
+		auto comp = [&coords](TPointIdx i1, TPointIdx i2) -> bool
 			{
 			// return coords[this->idx_[i1]] < coords[this->idx_[i2]];
-			return coords[i1] < coords[i2];
+			return coords[i1.pi_] < coords[i2.pi_];
 			};
 		// the actual splitting: the range [ibegin, iend) of idx_ is rearranged
 		std::nth_element(ibegin, imid, iend, comp);
@@ -406,20 +545,20 @@ namespace KDTree
 		// imid points to the split point. But we want to split the bounding box between
 		// the split point and its nearest lower neighbor
  		auto closestLoIdx = std::max_element(ibegin, imid, comp);
-		TReal closestLoCoord = coords[*closestLoIdx];
-		TReal splitPointCoord = coords[*imid];
+		TReal closestLoCoord = coords[(*closestLoIdx).pi_];
+		TReal splitPointCoord = coords[(*imid).pi_];
 		TReal BBSplitCoord = (closestLoCoord + splitPointCoord) / 2;
 		TNode dlo;
 		TNode dhi;
 		dlo.beginpt_ = node.beginpt_;
-		dlo.endpt_ = node.beginpt_ + nPts / 2;
+		dlo.endpt_.ii_ = node.beginpt_.ii_ + nPts / 2;
 		dhi.beginpt_ = dlo.endpt_;
 		dhi.endpt_ = node.endpt_;
 		dlo.corner0_ = dhi.corner0_ = node.corner0_;
 		dlo.corner1_ = dhi.corner1_ = node.corner1_;
 		dlo.corner1_[node.splitDim_] = dhi.corner0_[node.splitDim_] = BBSplitCoord;
 		dlo.motherNode_ = dhi.motherNode_ = next;
-		dlo.lowChildNode_ = dhi.lowChildNode_ = dlo.hiChildNode_ = dhi.hiChildNode_ = Def::invalidIdx;
+		dlo.lowChildNode_ = dhi.lowChildNode_ = dlo.hiChildNode_ = dhi.hiChildNode_ = TNodeIdx{ Def::invalidIdx };
 		dlo.splitDim_ = dhi.splitDim_ = (node.splitDim_ + 1) % dim;
 		dlo.isEdgeNode_ = dhi.isEdgeNode_ = node.isEdgeNode_;
 		// adjust bit field of dim
@@ -431,17 +570,17 @@ namespace KDTree
 		hiFlag = hiFlag << node.splitDim_;
 		hiFlag = ~hiFlag;
 		dhi.isEdgeNode_ &= hiFlag;
-		TIdx ilo = AddNode(dlo);
-		TIdx ihi = AddNode(dhi);
+		TNodeIdx ilo = AddNode(dlo);
+		TNodeIdx ihi = AddNode(dhi);
 		SetChildNodes(next, ilo, ihi);
 		if (!dlo.IsLeaf())
 			PushWork(ilo);
 		else
-			nodeIdx_[dlo.beginpt_] = ilo;
+			NodeIndex(Index(dlo.beginpt_)) = ilo;
 		if (!dhi.IsLeaf())
 			PushWork(ihi);	
 		else
-			nodeIdx_[dhi.beginpt_] = ihi;
+			NodeIndex(Index(dhi.beginpt_)) = ihi;
 		}
 
 	Def::TReal Distance(const Def::TKDPoint & p1, const Def::TKDPoint & p2)
@@ -470,6 +609,26 @@ namespace KDTree
 			}
 		return std::make_pair(p0,p1);
 		}
+
+	bool IsInBox(const std::pair<Def::TKDPoint, Def::TKDPoint>& boundingBox, const Def::TKDPoint & pt)
+		{
+		for (int idim = 0; idim < pt.size(); ++idim)
+			{
+			if (pt[idim] < boundingBox.first[idim]) return false;
+			if (pt[idim] > boundingBox.second[idim]) return false;
+			}
+		return true;
+		}
+
+	bool AreInBox(const std::pair<Def::TKDPoint, Def::TKDPoint>& boundingBox, const Def::TKDPoints & pts)
+		{
+		for (auto& p : pts)
+			{
+			if (!IsInBox(boundingBox, p)) return false;
+			}
+		return true;
+		}
+
 
 	void TestKDTree2D(std::string fn)
 		{
@@ -532,7 +691,7 @@ namespace KDTree
 
 		const TKDTree::TNodeArray& nd = kdt.Nodes();
 		
-		return; 
+		// return; 
 		std::ofstream f(fn);
 		f << "% output of TestKDTree2D\n";
 		f << "clear; figure(1); clf; hold on;\n";
@@ -540,7 +699,7 @@ namespace KDTree
 			{
 			if (n.IsLeaf())
 				{
-				Def::TKDPoint pt = pts[n.beginpt_];
+				Def::TKDPoint pt = pts[(kdt.Index()[n.beginpt_.ii_]).pi_];
 				Def::TKDPoint bblo = n.corner0_;
 				Def::TKDPoint bbhi = n.corner1_;
 				f << "plot([" << bblo[0] << ',' << bbhi[0] << ',' << bbhi[0] << ',' << bblo[0] << ',' << bblo[0] << "], ";
@@ -552,7 +711,7 @@ namespace KDTree
 			{
 			if (n.IsLeaf())
 				{
-				Def::TKDPoint pt = pts[n.beginpt_];
+				Def::TKDPoint pt = pts[(kdt.Index()[n.beginpt_.ii_]).pi_];
 				Def::TKDPoint bblo = n.corner0_;
 				Def::TKDPoint bbhi = n.corner1_;
 				if (n.isEdgeNode_ & 0x0001) // lo x
@@ -572,8 +731,8 @@ namespace KDTree
 		f << "scatter(2.1,1.1,'bs');\n";
 		for (int i = 0; i < nn; ++i)
 			{
-			auto pt1 = pts[nn00.i_points_[i]];
-			auto pt2 = pts[nn22.i_points_[i]];
+			auto pt1 = pts[nn00.i_points_[i].pi_];
+			auto pt2 = pts[nn22.i_points_[i].pi_];
 			f << "scatter([" << pt1[0] << ',' << pt2[0] << "],[" << pt1[1] << ',' << pt2[1] << "],'m');\n";
 			}
 		f << "axis equal;\n";
@@ -607,25 +766,24 @@ namespace KDTree
 		toc = clock.now();
 		dt = toc - tic;
 
-		for (int i = 0; i < kdt.Points().size(); ++i)
+		for (TKDTree::TIdx i = 0; i < kdt.Points().size(); ++i)
 			{
 			std::cout << i << ' ';
 			std::cout.flush();
 			Def::TKDPoint pt = pts[i];
-			Def::TIdx idx = kdt.Locate(i);
-			TNode nd = kdt.Nodes()[idx];
+			Def::TNodeIdx idx = kdt.Locate(TKDTree::TPointIdx{ i });
+			TNode nd = kdt.Nodes()[idx.ni_];
 			assert(nd.IsLeaf());
-			assert(i == kdt.Index()[nd.beginpt_]);
+			assert(i == kdt.Index()[nd.beginpt_.ii_].pi_);
 			
-			assert(idx == kdt.Locate(pt));
-
+			assert(idx.ni_ == kdt.Locate(pt).ni_);
 			}
 
 		}
 
 	TKDTree::TNearestNeighbors::TNearestNeighbors(TIdx n)
-		: i_points_(n, invalidIdx),
-		  i_nodes_(n, invalidIdx),
+		: i_points_(n, TPointIdx{ invalidIdx }),
+		i_nodes_(n, TNodeIdx{ invalidIdx }),
 		  distances_(n,std::numeric_limits<TReal>::max())		{
 		}
 

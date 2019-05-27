@@ -5,6 +5,7 @@
 #include "KDTree.h"
 #include <iostream>
 #include "PhaseSpace.h"
+#include <algorithm>
 
 int Test()
 	{
@@ -37,6 +38,9 @@ int main()
 			{
 			std::cout << "Warning: "<< w << "\n";
 			}
+		int n = 0;
+		auto pred = [&n](const float*, size_t) {return ++n < 10000; };
+		rs.SelectSubset(pred);
 		auto bb = rs.RayArray().BoundingBox();
 		cout << "Bounding Box: x in [" << bb.first[0] << ',' << bb.second[0] << "], y in ["
 			<< bb.first[1] << ',' << bb.second[1] << "], z in [" << bb.first[2] << ',' << bb.second[2] << "]" << endl;
@@ -80,6 +84,9 @@ int main()
 		// hoping rays will stay away from the -z hemisphere
 		TZAxisStereographicSphericalPhaseSpace<float> ps(vf + TVec3f{ 0,0,-dist }, static_cast<float>(dist * 2.2));
 		size_t nr = rs.NRays();
+		
+		// create the array of points for the KD tree
+		// as well as a same size and order array of fluxes
 		KDTree::Def::TKDPoints pspoints;
 		std::vector<float> fluxes;
 		for (size_t i = 0; i < nr; ++i)
@@ -90,16 +97,32 @@ int main()
 			pspoints.push_back(phasespacepoint);
 			fluxes.push_back(get<2>(iray));
 			}
+		// create tree using the move constructor
 		KDTree::TKDTree kdtree(std::move(pspoints));
 		kdtree.CreateTree();
+		kdtree.ShrinkEdgeNodes();
+		kdtree.CheckConsistency();
+		// for each cell, find the 10 nearest neighbors
+		// compute their total volume, total power and average luminance
+		// set cell luminance to avg luminance over neighbors
 		std::vector<float> volumes;
 		std::vector<float> luminances;
-		size_t nNeighbors = 10;
+		KDTree::Def::TIdx nNeighbors = 10;
 		for (size_t i = 0; i < nr; ++i)
 			{
-			KDTree::TKDTree::TNearestNeighbors inbs = kdtree.NearestNeighborsOfPoint(i, nNeighbors);
-			float vol = kdtree.
+			KDTree::TKDTree::TPointIdx pi{ static_cast<KDTree::Def::TIdx>(i) };
+			KDTree::TKDTree::TNearestNeighbors inbs = kdtree.NearestNeighborsOfPoint(pi, nNeighbors);
+			float vol = kdtree.TotalVolume(inbs.i_nodes_);
+			float flux = 0;
+			for (auto i : inbs.i_points_)
+				flux += fluxes[i.pi_];
+			float avgLuminance = flux / vol;
+			luminances.push_back(avgLuminance);
+			volumes.push_back(kdtree.Nodes()[kdtree.NodeIndex()[pi.pi_].ni_].Volume());
 			}
+		// now we have an array of rays, a corresponding array of points in phase space, and corresponding arrays of volumes, fluxes and luminances. 
+		// we also have the KD tree structure which gives us a phase space bounding box for each ray.
+		// we are ready to create additional rays.
 
 		}
 	catch (TM25::TM25Error e)
