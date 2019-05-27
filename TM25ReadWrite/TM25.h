@@ -14,8 +14,11 @@ or http://unlicense.org/
 #include<stdexcept>
 #include<limits>
 #include<cstdint>
+#include <functional>
 // #include<chrono>
 #include"ReadFile.h"
+#include"WriteFile.h"
+#include "LinAlg3.h"
 
 namespace TM25
 	{
@@ -130,6 +133,20 @@ namespace TM25
 		std::u32string	additional_text_4_7_6;
 
 		TTM25Header();
+
+		struct TSanityCheck
+			{
+			TSanityCheck();
+			std::string msg;
+			bool nonfatalErrors;
+			bool fatalErrors;
+			void Fatal(bool test, const std::string& s);
+			void NonFatal(bool test, const std::string& s);
+			};
+
+		const TSanityCheck SanityCheck() const;
+		// checks consistency, e.g. n_spectra_4_7_1_13 == spectra_4_7_4.size()
+		// ideally, rv.msg.empty(), nonfatalErrors == fatalErrors = false
 		};
 	
 
@@ -141,8 +158,11 @@ namespace TM25
 			TBasicTM25RaySet(const TTM25Header& h, const TRayArray& r);
 			TBasicTM25RaySet(const TTM25Header& h, TRayArray&& r);
 			
-			void Read(std::string filename);
-			void Write(std::string filename) const;
+			void Read(std::string filename, bool normalize_k = true);
+			// write only the selected rays, if there has been a selection
+			void Write(std::string filename);
+
+			void Make_k_unit(); // change all direction vectors to unit vectors;
 			
 			const TRaySetItems& Items() const;
 			const TRayArray& RayArray() const;
@@ -150,6 +170,11 @@ namespace TM25
 			const std::vector<std::string>& Warnings() const;
 
 			size_t NRays() const;
+			size_t NItems() const;
+			
+			// return location, direction and flux for ray i. Throws std::runtime_error if i out of range. Uses PowerColumn()
+			std::tuple<TVec3f, TVec3f, float> RayLocDirFlux(size_t i) const;
+			
 			std::vector<float> ExtractSingle(const TRaySetItems::TExtractionMap& em, size_t i) const;
 			// returns the data of the i'th ray, containing the items in em
 			// throw TM25Error if n >= NRays(), or if Items().Contains(em) == false
@@ -167,9 +192,43 @@ namespace TM25
 			// returns the data of the rays according to the indices in idx, 
 			// containing the items in em
 			// throw TM25Error if any element of idx >= NRays(), or if Items().Contains(em) == false
+
+			// virtual focus, distances to virtual focus
+			TVec3f VirtualFocus() const; // see paper on virtual focus definition: minimize weighted ray distance
+			// compute maximum distance of any ray to focus
+			double MaxDistance(TVec3f focus) const; // precondition: all k are unit vectors
+			// create distance histogram: often, very few rays have high distance and may be neglected
+			struct TDistanceBin { double dist_; size_t nRays_; double flux_; };
+			std::vector<TDistanceBin> DistanceHistogram(TVec3f focus, size_t nBins) const;
+
+			// shrink ray set to those rays for which predicate returns true
+			// signature: bool predicate(const float* firstRayItem, size_t nItems)
+			// i.e. firstRayItem points to a ray with nItems items, and predicate checks if that ray shall be selected
+			// internally, ray sequence is modified such that the selected rays come first.
+			// the other rays remain in memory, at the end of the ray array
+			// Therefore, selection can be undone
+			// Calling SelectSubset more than once will apply the selection on the already selected subset
+			// in effect, this is a boolean AND
+			// returns NRays() of subset
+			size_t SelectSubset(const std::function<bool (const float*, size_t)>& predicate);
+			// partition ray file according to distance
+			// such that rays with <= dist come first. Their number is then returned
+			size_t SelectMaxDistance(double dist, const TVec3f& point);
+			// undoes selection, ray set will again contain all rays, but quite possibly shuffled
+			void UnselectSubset();
+			bool SelectionActive() const; // true if selection has shrunk the ray set
+
+			// create flux histogram: see if ray file has mostly constant flux or many rays with small flux
+			struct TFluxBin { double fluxLimit_; size_t nRays_; double fluxInBin_; };
+			std::vector<TFluxBin> FluxHistogram(size_t nBins) const;
+
 		private:
 			void ReadHeader(TReadFile& f);
-			void ReadRayData(TReadFile& f);
+			void ReadRayData(TReadFile& f, bool normalize_k);
+
+			void WriteHeader(TWriteFile& f) const;
+			void WriteRayData(TWriteFile& f) const;
+
 			enum class RayWarnings
 				{
 				kNotNormalized,
@@ -192,16 +251,20 @@ namespace TM25
 			std::string ToString(RayErrors e) const;
 			bool CheckRay(std::map<RayErrors, size_t>& err,
 				std::map<RayWarnings, size_t>& warn,
-				const std::vector<float>& r,
+				std::vector<float>& r, 
+				bool normalize_k, 
 				const std::array<size_t, nStdItems>& itemIndices,
 				size_t i); 
 			// return true if ray is fully ok
 			// sets entries in error and warning maps to i if not already set
 			// thus, ray file can be fully read and first occurrence of any
 			// error or warning is available
+			size_t PowerColumn() const; // zero based! Returns rad. flux column when present, else lum flux column (one of them must be present)
 			TTM25Header header_;
 			TRaySetItems items_;
 			TRayArray ray_array_;
+			size_t selectionSize_; // the number of rays selected by SelectSubset. std::numeric_limit<size_t>::max() when there is no selection
+			static constexpr size_t noSelection_ = std::numeric_limits<size_t>::max();
 			std::vector<std::string> warnings_;
 		};
 	
@@ -221,19 +284,26 @@ namespace TM25
 			void SetRay(size_t i, const std::vector<float>& ray);
 			// copies ray into the i'th row
 			// throws TM25Error if ray.size() != nItems or i >= nRays
+			template< size_t N>
+			void SetRay(size_t i, const std::array<float, N>& ray);
+			// copies ray into the i'th row
+			// throws TM25Error if ray.size() != nItems or i >= nRays
 			void SetItem(size_t j, const std::vector<float>& item);
 			// copies item into the j'th column
-			// throws TM25Error if item.size() != nRays or i >= nRays
+			// throws TM25Error if item.size() != nRays or j >= nItems
 			void SetRayItem(size_t iray, size_t jitem, float r);
 			// throws TM25Error if iray >= nRays(), or jitem >= nItems()
 			std::vector<float> GetRay(size_t i) const;
 			// returns i'th row as vector -- the safer but slower way
 			// throws TM25Error if i >= nRays
 			const float* GetRayDirect(size_t i) const;
+			float* GetRayDirect(size_t i);
 			// returns i'th row as pointer to first element -- the dangerous, fast way
 			// with rv = GetRayDirect(i), (rv, rv + NItems() ) is a valid range
 			// throws TM25Error if i >= nRays
 			const std::vector<float>& Data() const;
+			std::pair<TVec3f,TVec3f> BoundingBox() const; // no column information needed -- x and k are in the first six columns
+
 		private:
 			size_t nRays_;
 			size_t nItems_;

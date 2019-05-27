@@ -11,7 +11,7 @@ or http://unlicense.org/
 #include <sstream>
 #include <cassert>
 
-namespace TM25 
+namespace TM25
 	{
 
 	class TRayItemNames
@@ -93,12 +93,12 @@ namespace TM25
 	//	TRaySetItems implementation
 	// a sequence of standard items, 
 	// followed by a sequence of user defined additional items
-			
+
 	TRaySetItems::TRaySetItems()
 		: nTotal_(0)
 		{
 		stdItems_.fill(false);
-		}; 
+		};
 
 	TRaySetItems::TRaySetItems(const TTM25Header& h)
 		: nTotal_(0)
@@ -129,7 +129,7 @@ namespace TM25
 			}
 		if (h.spectrum_index_flag_4_7_2_8)
 			MarkAsPresent(RayItem::spectrumIdx);
-		for (auto s: h.column_names_4_7_5)
+		for (auto s : h.column_names_4_7_5)
 			AddAdditionalItem(s);
 		}
 
@@ -143,7 +143,7 @@ namespace TM25
 			++nTotal_;
 			}
 		}
-			
+
 	void TRaySetItems::MarkAsAbsent(RayItem ri)
 		{
 		size_t i = CheckRayItem(ri, "MarkAsAbsent");
@@ -153,39 +153,39 @@ namespace TM25
 			--nTotal_;
 			}
 		};
-			
+
 	void TRaySetItems::AddAdditionalItem(const std::u32string& name)
 		{
 		if (name.empty())
 			throw TM25Error("TRaySetItems::AddAdditionalItem: empty name");
 		if (ContainsAdditionalItem(name))
 			throw TM25Error("TRaySetItems::AddAdditionalItem: duplicate name: "
-				+ ToString(name));
+			+ ToString(name));
 		additionalItemNames_.push_back(name);
 		++nTotal_;
 		}
-			
+
 	bool TRaySetItems::IsPresent(RayItem ri) const
 		{
 		size_t i = CheckRayItem(ri, "IsPresent");
 		return stdItems_[i];
 		}
-			
+
 	size_t TRaySetItems::NStdItems() const // number of standard items present
 		{
 		return nTotal_ - additionalItemNames_.size();
 		}
-			
+
 	size_t TRaySetItems::NAdditionalItems() const // number of additional items
 		{
 		return additionalItemNames_.size();
 		}
-			
+
 	size_t TRaySetItems::NTotalItems() const // convenience, sum of std+addtl
 		{
 		return nTotal_;
 		}
-			
+
 	RayItem TRaySetItems::ItemType(size_t i) const // throw if i >= NTotalItems()
 		{
 		if (i >= nTotal_)
@@ -207,7 +207,7 @@ namespace TM25
 			}
 		throw TM25Error("TRaySetItems::ItemType: logic error, this cannot happen");
 		}
-			
+
 	std::u32string TRaySetItems::ItemName(size_t i) const
 		{
 		if (i >= nTotal_)
@@ -229,7 +229,7 @@ namespace TM25
 			}
 		throw TM25Error("TRaySetItems::ItemName: logic error, this cannot happen");
 		}
-				
+
 	bool TRaySetItems::ContainsItems(const TRaySetItems& rhs) const
 		{
 		for (size_t j = 0; j < nStdItems; ++j)
@@ -242,14 +242,14 @@ namespace TM25
 			}
 		return true;
 		}
-			
+
 	bool TRaySetItems::ContainsAdditionalItem(const std::u32string& name) const
 		{
 		return
 			std::find(additionalItemNames_.begin(), additionalItemNames_.end(), name)
 			!= additionalItemNames_.end();
 		}
-			
+
 	TRaySetItems::TExtractionMap TRaySetItems::ExtractionMap(
 		const TRaySetItems& rhs) const
 		{
@@ -268,7 +268,7 @@ namespace TM25
 				}
 			}
 		size_t nStd = nTotal_ - additionalItemNames_.size();
-		if (thisIdx != nStd) 
+		if (thisIdx != nStd)
 			throw TM25Error("TRaySetItems::ExtractionMap: thisIdx != nStd, this cannot happen");
 		for (auto s : rhs.additionalItemNames_)
 			{
@@ -278,7 +278,7 @@ namespace TM25
 					rv.push_back(nStd + j);
 				}
 			}
-		if (rv.size() != rhs.NTotalItems()) 
+		if (rv.size() != rhs.NTotalItems())
 			throw TM25Error("TRaySetItems::ExtractionMap: rv.size() != rhs.NTotalItems(), this cannot happen");
 		return rv;
 		}
@@ -303,7 +303,7 @@ namespace TM25
 		size_t rv = static_cast<size_t>(ri);
 		if (rv >= stdItems_.size())
 			throw TM25Error("TRaySetItems::" + fn + ": illegal RayItem: "
-				+ std::to_string(rv));
+			+ std::to_string(rv));
 		return rv;
 		}
 
@@ -326,8 +326,8 @@ namespace TM25
 		tm_time.tm_isdst = 0;
 		// file_date_time = std::chrono::system_clock::from_time_t(mktime(&tm_time));
 		start_position_4_7_1_8 = 0; // unknown
-		spectrum_type_4_7_1_9 = 0; // no wavelength information
-		lambda_4_7_1_10 = std::numeric_limits<float>::signaling_NaN();
+		spectrum_type_4_7_1_9 = 1; // single wavelength 
+		lambda_4_7_1_10 = 500; // std::numeric_limits<float>::signaling_NaN();
 		lambda_min_4_7_1_11 = std::numeric_limits<float>::signaling_NaN();
 		lambda_max_4_7_1_12 = std::numeric_limits<float>::signaling_NaN();
 		n_spectra_4_7_1_13 = 0; // no spectra
@@ -352,15 +352,111 @@ namespace TM25
 		// std::u32string	additional_text_4_7_6;
 		}
 
+	TTM25Header::TSanityCheck::TSanityCheck()
+		: msg(), nonfatalErrors(false), fatalErrors(false)
+		{
+		}
+
+	void TTM25Header::TSanityCheck::Fatal(bool test, const std::string & s)
+		{
+		if (!test) return;
+		msg += "fatal error: " + s + "\n";
+		fatalErrors = true;
+		}
+
+	void TTM25Header::TSanityCheck::NonFatal(bool test, const std::string & s)
+		{
+		if (!test) return;
+		msg += "nonfatal error: " + s + "\n";
+		nonfatalErrors = true;
+		}
+
+
+	const TTM25Header::TSanityCheck TTM25Header::SanityCheck() const
+		{
+		TSanityCheck rv;
+		// 4.7.1 file header block
+		rv.Fatal(version_4_7_1_2 != 2013,
+			"4.7.1.2: version is not 2013 -> " + std::to_string(version_4_7_1_2));
+		auto goodFlux = [](float r)
+			{return (r == 0.0f || std::isnan(r) || (std::isnormal(r) && r > 0.0f)); };
+		rv.Fatal(!goodFlux(phi_v_4_7_1_4),
+			"4.7.1.4: luminous flux is not positive normalized, zero or NaN -> " + std::to_string(phi_v_4_7_1_4));
+		rv.Fatal(!goodFlux(phi_4_7_1_5),
+			"4.7.1.5: radiant flux is not positive normalized, zero or NaN -> " + std::to_string(phi_4_7_1_5));
+		rv.Fatal(n_rays_4_7_1_6 == 0, "4.7.1.6: # of rays is zero");
+		rv.Fatal(spectrum_type_4_7_1_9 < 0 || spectrum_type_4_7_1_9 > 4,
+			"4.7.1.9: spectrum type is not 0,1,2,3,4 -> " + std::to_string(spectrum_type_4_7_1_9));
+		rv.Fatal(spectrum_type_4_7_1_9 == 1 && !(lambda_4_7_1_10 > 0),
+			"4.7.1.10: spectrum type is 1 (single wavelength) but wavelength is not positive -> "
+			+ std::to_string(lambda_4_7_1_10));
+		bool minmaxlam = (spectrum_type_4_7_1_9 >= 2) && (spectrum_type_4_7_1_9 <= 4);
+		rv.NonFatal(minmaxlam && !(lambda_min_4_7_1_11 > 0), "4.7.1.11: min. wavelength not positive -> "
+			+ std::to_string(lambda_min_4_7_1_11));
+		rv.NonFatal(minmaxlam && !(lambda_max_4_7_1_12 > 0), "4.7.1.12: max. wavelength not positive -> "
+			+ std::to_string(lambda_max_4_7_1_12));
+		rv.NonFatal(minmaxlam && !(lambda_max_4_7_1_12 >= lambda_min_4_7_1_11),
+			"4.7.1.12: max wavelength not >= min wavelength -> " + std::to_string(lambda_max_4_7_1_12)
+			+ " vs. " + std::to_string(lambda_min_4_7_1_11));
+		rv.Fatal(n_spectra_4_7_1_13 < 0, "4.7.1.13: # of spectra < 0 -> " + std::to_string(n_spectra_4_7_1_13));
+		rv.Fatal(n_addtl_items_4_7_1_14 < 0, "4.7.1.14: # of addtl items < 0 -> " + std::to_string(n_addtl_items_4_7_1_14));
+		// 4.7.2 known data flags
+		auto NotZeroOrOne = [](int32_t i) {return (i < 0) || (i > 1); };
+		rv.Fatal(NotZeroOrOne(rad_flux_flag_4_7_2_3), "4.7.2.3: radiant flux flag not 0 or 1 -> "
+			+ std::to_string(rad_flux_flag_4_7_2_3));
+		rv.Fatal((spectrum_type_4_7_1_9 == 2 || spectrum_type_4_7_1_9 == 4) && !rad_flux_flag_4_7_2_3,
+			"4.7.2.3: spectrum type is " + std::to_string(spectrum_type_4_7_1_9) + ", but radiant flux flag is not set");
+		rv.Fatal(NotZeroOrOne(lambda_flag_4_7_2_4), "4.7.2.4: wavelength flag not 0 or 1 -> "
+			+ std::to_string(lambda_flag_4_7_2_4));
+		rv.Fatal((spectrum_type_4_7_1_9 == 2) && !lambda_flag_4_7_2_4, "4.7.2.4: spectrum type is 2, but wavelength flag not set");
+		rv.Fatal(NotZeroOrOne(lum_flux_flag_4_7_2_5), "4.7.2.5: luminous flux flag not 0 or 1 -> "
+			+ std::to_string(lum_flux_flag_4_7_2_5));
+		rv.Fatal(!rad_flux_flag_4_7_2_3 && !lum_flux_flag_4_7_2_5, "4.7.2.5: both rad and lum flux flags are missing");
+		rv.Fatal((spectrum_type_4_7_1_9 == 2 || spectrum_type_4_7_1_9 == 4) && lum_flux_flag_4_7_2_5,
+			"4.7.2.5: spectrum type is " + std::to_string(spectrum_type_4_7_1_9) + ", but lum flux flag is set");
+		rv.Fatal(NotZeroOrOne(stokes_flag_4_7_2_6), "4.7.2.6: stokes flag not 0 or 1 -> "
+			+ std::to_string(stokes_flag_4_7_2_6));
+		rv.Fatal(stokes_flag_4_7_2_6 && !rad_flux_flag_4_7_2_3, "4.7.2.3: stokes flag set but radiant flux flag not set");
+		rv.Fatal(NotZeroOrOne(tristimulus_flag_4_7_2_7), "4.7.2.7: tristimulus flag not 0 or 1 -> "
+			+ std::to_string(tristimulus_flag_4_7_2_7));
+		rv.Fatal(tristimulus_flag_4_7_2_7 && !lum_flux_flag_4_7_2_5, "4.7.2.7: tristimulus flag set but lum flux flag not set");
+		rv.Fatal(tristimulus_flag_4_7_2_7 && (spectrum_type_4_7_1_9 != 0),
+			"4.7.2.7: tristimulus flag set but spectrum type " + std::to_string(spectrum_type_4_7_1_9) + " is not 0");
+		rv.Fatal(NotZeroOrOne(spectrum_index_flag_4_7_2_8), "4.7.2.8: spectrum index flag not 0 or 1 -> "
+			+ std::to_string(spectrum_index_flag_4_7_2_8));
+		rv.Fatal(spectrum_index_flag_4_7_2_8 && (spectrum_type_4_7_1_9 != 4),
+			"4.7.2.8: spectrum index flag set but spectrum type " + std::to_string(spectrum_type_4_7_1_9) + " is not 4");
+		rv.Fatal(!spectrum_index_flag_4_7_2_8 && (spectrum_type_4_7_1_9 == 4),
+			"4.7.2.8: spectrum index flag not set but spectrum type is 4");
+		// 4.7.4 spectral tables 
+		rv.Fatal(n_spectra_4_7_1_13 != spectra_4_7_4.size(),
+			"4.7.4: # of spectra (4.7.1.13, " + std::to_string(n_spectra_4_7_1_13) + ") is not equal to number of spectral tables "
+			+ std::to_string(spectra_4_7_4.size()));
+		size_t i_sp = 0;
+		for (const auto& sp : spectra_4_7_4)
+			{
+			++i_sp;
+			rv.Fatal(sp.idx_ <= 1, "4.7.4: index " + std::to_string(sp.idx_) + " must be > 0 in spectrum # " + std::to_string(i_sp));
+			for (auto lam : sp.lambda_)
+				rv.Fatal(!(lam > 0.0f), "4.7.4: non positive wavelength " + std::to_string(lam) + " in spectrum " + std::to_string(i_sp));
+			for (auto wt : sp.weight_)
+				rv.Fatal(!(wt >= 0.0f), "4.7.4: negative weight " + std::to_string(wt) + " in spectrum " + std::to_string(i_sp));
+			}
+		// 4.7.5 column labels
+		rv.Fatal(n_addtl_items_4_7_1_14 != column_names_4_7_5.size(), "4.7.5: # of additional names: "
+			+ std::to_string(column_names_4_7_5.size()) + " does not match 4.7.1.14: " + std::to_string(n_addtl_items_4_7_1_14));
+		return rv;
+		}
+
 // ********************************************************************
 	// TDefaultRayArray implementation
 	TDefaultRayArray::TDefaultRayArray()
 		: nRays_(0), nItems_(0) {};
 
 	TDefaultRayArray::TDefaultRayArray(size_t nRays, size_t nItems)
-		: nRays_(nRays), nItems_(nItems), 
+		: nRays_(nRays), nItems_(nItems),
 		data_(nRays * nItems, std::numeric_limits<float>::signaling_NaN()) {};
-	
+
 	void TDefaultRayArray::Resize(size_t nRays, size_t nItems)
 		{
 		Clear();
@@ -397,7 +493,7 @@ namespace TM25
 		if (ray.size() != nItems_)
 			{
 			std::stringstream s;
-			s << "TDefaultRayArray::SetRay: ray.size() (" << ray.size() << 
+			s << "TDefaultRayArray::SetRay: ray.size() (" << ray.size() <<
 				") != NItems() (" << nItems_ << ")";
 			throw TM25Error(s.str());
 			}
@@ -429,14 +525,14 @@ namespace TM25
 		if (iray >= nRays_)
 			{
 			std::stringstream s;
-			s << "TDefaultRayArray::SetRayItem: iray (" << iray << ") >= NRays() (" 
+			s << "TDefaultRayArray::SetRayItem: iray (" << iray << ") >= NRays() ("
 				<< nRays_ << ")";
 			throw TM25Error(s.str());
 			}
 		if (jitem >= nItems_)
 			{
 			std::stringstream s;
-			s << "TDefaultRayArray::SetRayItem: jitem (" << jitem << ") >= NItems() (" 
+			s << "TDefaultRayArray::SetRayItem: jitem (" << jitem << ") >= NItems() ("
 				<< nItems_ << ")";
 			throw TM25Error(s.str());
 			}
@@ -469,9 +565,46 @@ namespace TM25
 		return data_.data() + i * nItems_;
 		}
 
+	float * TDefaultRayArray::GetRayDirect(size_t i)
+		{
+		if (i >= nRays_)
+			{
+			std::stringstream s;
+			s << "TDefaultRayArray::GetRayDirect: i (" << i << ") >= NRays() ("
+				<< nRays_ << ")";
+			throw TM25Error(s.str());
+			}
+		return data_.data() + i * nItems_;
+		}
+
 	const std::vector<float>& TDefaultRayArray::Data() const
 		{
 		return data_;
 		}
 
-	}
+	std::pair<TVec3f, TVec3f> TDefaultRayArray::BoundingBox() const
+		{
+		float minflt = std::numeric_limits<float>::min();
+		float maxflt = std::numeric_limits<float>::max();
+
+		std::pair<TVec3f, TVec3f> rv({ maxflt, maxflt, maxflt }, { minflt, minflt, minflt });
+
+		auto check = [](float& lo, float& hi, float val)
+			{
+			if (lo > val) lo = val;
+			if (hi < val) hi = val;
+			};
+
+		for (size_t i = 0; i < NRays(); ++i)
+			{
+			const float* iray = GetRayDirect(i);
+			check(rv.first[0], rv.second[0], *iray);
+			++iray;
+			check(rv.first[1], rv.second[1], *iray);
+			++iray;
+			check(rv.first[2], rv.second[2], *iray);
+			}
+		return rv;
+		}
+
+	} // namespace TM25

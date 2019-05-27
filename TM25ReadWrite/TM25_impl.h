@@ -10,6 +10,7 @@ or http://unlicense.org/
 
 #include "TM25Util.h"
 #include <sstream>
+#include "TM25.h"
 namespace TM25
 	{
 
@@ -19,25 +20,62 @@ namespace TM25
 		ray_array_.Resize(1, 7);
 		header_.n_rays_4_7_1_6 = 1;
 		ray_array_.SetRay(0, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f });
+		selectionSize_ = noSelection_;
 		}
 
 	template<typename TRayArray>
 	TBasicTM25RaySet<TRayArray>::TBasicTM25RaySet(const TTM25Header& h, const TRayArray& r)
-		: header_(h), items_(h), ray_array_(r) {};
+		: header_(h), items_(h), ray_array_(r), selectionSize_(noSelection_) {};
 
 	template<typename TRayArray>
 	TBasicTM25RaySet<TRayArray>::TBasicTM25RaySet(const TTM25Header& h, TRayArray&& r)
-		: header_(h), items_(h), ray_array_(std::move(r)) {};
+		: header_(h), items_(h), ray_array_(std::move(r)), selectionSize_(noSelection_) {};
 
 
 	template<typename TRayArray>
-	void TBasicTM25RaySet<TRayArray>::Read(std::string filename)
+	void TBasicTM25RaySet<TRayArray>::Read(std::string filename, bool normalize_k)
 		{
 		warnings_.clear();
 		TReadFile f(filename);
 		ReadHeader(f);
 		items_ = TRaySetItems(header_);
-		ReadRayData(f);
+		ReadRayData(f, normalize_k);
+		}
+
+	template<typename TRayArray>
+	inline void TBasicTM25RaySet<TRayArray>::Write(std::string filename)
+		{
+		TTM25Header::TSanityCheck sc = header_.SanityCheck();
+		if (sc.fatalErrors)
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::Write: fatal error in header: " + sc.msg);
+		if (sc.nonfatalErrors)
+			warnings_.push_back("TBasicTM25RaySet<TRayArray>::Write: nonfatal error in header: " + sc.msg);
+		if (ray_array_.NRays() != header_.n_rays_4_7_1_6)
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::Write: nRays mismatch: header says "
+			+ std::to_string(header_.n_rays_4_7_1_6) + ", ray array has " + std::to_string(ray_array_.NRays()));
+		if (ray_array_.NItems() != TRaySetItems(header_).NTotalItems())
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::Write: nItems mismatch: header says "
+			+ std::to_string(TRaySetItems(header_).NTotalItems()) + ", ray array has " + std::to_string(ray_array_.NItems()));
+		TWriteFile f(filename);
+		WriteHeader(f);
+		WriteRayData(f);
+		}
+
+	template<typename TRayArray>
+	inline void TBasicTM25RaySet<TRayArray>::Make_k_unit()
+		{
+		size_t n = NRays();
+		for (size_t i = 0; i < n; ++i)
+			{
+			float* ri = const_cast<float*>(ray_array_.GetRayDirect(i));
+			float& k0 = *(ri + 3);
+			float& k1 = *(ri + 4);
+			float& k2 = *(ri + 5);
+			float kabs = sqrt(k0 * k0 + k1 * k1 + k2 * k2);
+			k0 /= kabs;
+			k1 /= kabs;
+			k2 /= kabs;
+			}
 		}
 
 	template<typename TRayArray>
@@ -75,7 +113,244 @@ namespace TM25
 				<< ", ray_array_.NRays() says " << ray_array_.NRays();
 			throw TM25Error(s.str());
 			}
-		return header_.n_rays_4_7_1_6;
+		if (SelectionActive())
+			return selectionSize_;
+		else
+			return header_.n_rays_4_7_1_6;
+		}
+
+	template<typename TRayArray>
+	inline size_t TBasicTM25RaySet<TRayArray>::NItems() const
+		{
+		return items_.NTotalItems();
+		}
+
+	template<typename TRayArray>
+	std::tuple<TVec3f, TVec3f, float> TBasicTM25RaySet<TRayArray>::RayLocDirFlux(size_t i) const
+		{
+		if (i >= NRays())
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::RayLocDirFlux: i out of range");
+		const float* fp = ray_array_.GetRayDirect(i);
+		ptrdiff_t ipc = PowerColumn();
+		return std::tuple<TVec3f, TVec3f, float>(TVec3f{ *fp, *(fp + 1), *(fp + 2) }, TVec3f{ *(fp + 3),*(fp + 4),*(fp + 5) }, *(fp + ipc));
+		}
+
+	template<typename TRayArray>
+	TVec3f TBasicTM25RaySet<TRayArray>::VirtualFocus() const
+		{ // see "Computing the virtual focus of a ray data source"
+		// determine which column to use for power
+		size_t powerCol = PowerColumn();
+		// assemble matrix A and rhs b, see eq. 10, in double precision
+		TMat3d A = Zero3<double>();
+		TVec3d b{ 0,0,0 };
+		size_t n = NRays();
+		TMat3d I = Eye3<double>();
+		for (size_t i = 0; i < n; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			TVec3d xi{ *r, *(r + 1), *(r + 2) };
+			TVec3d ki{ *(r + 3), *(r + 4), *(r + 5) };
+			double wi = *(r + powerCol);
+			ki /= Norm(ki); // make unit vector
+			TMat3d I_m_kk = (I - Outer(ki, ki)) * wi;
+			A += I_m_kk;
+			b += (I_m_kk * xi);
+			}
+		double detA = Det(A);
+		if (abs(detA) < 1e-10) // A is singular -> ray bundle is collimated, return center of mass of ray starting points.
+			{
+			TVec3d x{ 0,0,0 };
+			double w = 0;
+			for (size_t i = 0; i < n; ++i)
+				{
+				const float* r = ray_array_.GetRayDirect(i);
+				TVec3d xi{ *r, *(r + 1), *(r + 2) };
+				double wi = *(r + powerCol);
+				x += (wi * xi);
+				w += wi;
+				}
+			x /= w;
+			return TVec3f{ static_cast<float>(x[0]),  static_cast<float>(x[1]),  static_cast<float>(x[2]) };
+			}
+		else
+			{
+			TVec3d rv = Solve(A, b);
+			return TVec3f{ static_cast<float>(rv[0]), static_cast<float>(rv[1]), static_cast<float>(rv[2]) };
+			}
+		}
+
+	template<typename TRayArray>
+	double TBasicTM25RaySet<TRayArray>::MaxDistance(TVec3f focus) const
+		{
+		auto distance2 = [&focus](const TVec3f& r, const TVec3f& k)
+			{return Sqr(Cross(focus - r, k)); };
+		double rv = 0;
+		size_t n = NRays();
+		float d2;
+		for (size_t i = 0; i < n; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			d2 = distance2({ *r, *(r + 1),*(r + 2) }, { *(r + 3), *(r + 4), *(r + 5) });
+			if (d2 > rv)
+				rv = d2;
+			}
+		return sqrt(rv);
+		}
+
+	template<typename TRayArray>
+	std::vector<typename TBasicTM25RaySet<TRayArray>::TDistanceBin> 
+		TBasicTM25RaySet<TRayArray>::DistanceHistogram(TVec3f focus, size_t nBins) const
+		{
+		size_t powerCol = PowerColumn();
+		std::vector<TDistanceBin> rv(nBins);
+		double md = MaxDistance(focus);
+		for (size_t i = 0; i < nBins; ++i)
+			{
+			rv[i].dist_ = ((i + 1) * md) / nBins;
+			rv[i].nRays_ = 0;
+			rv[i].flux_ = 0;
+			}
+		auto distance2 = [&focus](const TVec3f& r, const TVec3f& k)
+			{return Sqr(Cross(focus - r, k)); };
+		size_t n = NRays();
+		for (size_t i = 0; i < n; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			float d = sqrt(distance2({ *r, *(r + 1),*(r + 2) }, { *(r + 3), *(r + 4), *(r + 5) }));
+			size_t ibin = static_cast<size_t>(floor(nBins * d / md));
+			if (ibin >= nBins) ibin = nBins - 1;
+			rv[ibin].nRays_ += 1;
+			rv[ibin].flux_ += *(r + powerCol);
+			}
+		return rv;
+		}
+
+	template<typename TRayArray>
+	size_t TBasicTM25RaySet<TRayArray>::SelectSubset(const std::function<bool (const float*, size_t)>& predicate)
+		{
+		//template<class _BidIt,
+		//	class _Pr> inline
+		//	_BidIt _Partition_unchecked(_BidIt _First, _BidIt _Last, _Pr _Pred,
+		//	bidirectional_iterator_tag)
+		//	{	// move elements satisfying _Pred to front, bidirectional iterators
+		//	for (;;)
+		//		{	// find any out-of-order pair
+		//		for (;;)
+		//			{	// skip in-place elements at beginning
+		//			if (_First == _Last)
+		//				{
+		//				return (_First);
+		//				}
+
+		//			if (!_Pred(*_First))
+		//				{
+		//				break;
+		//				}
+
+		//			++_First;
+		//			}
+
+		//		do
+		//			{	// skip in-place elements at end
+		//			--_Last;
+		//			if (_First == _Last)
+		//				{
+		//				return (_First);
+		//				}
+		//			} while (!_Pred(*_Last));
+
+		//			_STD iter_swap(_First, _Last);	// out of place, swap and loop
+		//			++_First;
+		//		}
+		//	}
+		size_t first = 0;
+		size_t last = NRays(); // apply only to already selected rays
+		size_t nItems = NItems();
+		float* pfirst = nullptr;
+		float* plast = nullptr;
+		for (;;)
+			{ // find out of order pair
+			for (;;)
+				{
+				if (first == last)
+					break;
+				if (!predicate(pfirst = ray_array_.GetRayDirect(first), nItems))
+					break;
+				++first;
+				} // now predicate fails on first
+			if (first == last) 
+				break;
+			do
+				{ // skip in-place elements at end
+				--last;
+				if (first == last)
+					break;
+				} while (!predicate(plast = ray_array_.GetRayDirect(last), nItems));
+			// now predicate is ok on last
+			if (first == last)
+				break;
+			std::swap_ranges(pfirst, pfirst + nItems, plast);
+			}
+		selectionSize_ = first;
+		return selectionSize_;
+		}
+
+	template<typename TRayArray>
+	inline size_t TBasicTM25RaySet<TRayArray>::SelectMaxDistance(double dist, const TVec3f& point)
+		{
+		float dist2 = static_cast<float>(dist * dist);
+		auto predicate = [dist2, &point](const float* r, size_t nItems)
+			{
+			TVec3f pmr{ point[0] - *r, point[1] - *(r + 1),point[2] - *(r + 2) };
+			TVec3f k{ *(r + 3),*(r + 4),*(r + 5) };
+			float d2 = Sqr(Cross(pmr, k));
+			return d2 <= dist2;
+			};
+		return SelectSubset(predicate);
+		}
+
+	template<typename TRayArray>
+	void TBasicTM25RaySet<TRayArray>::UnselectSubset()
+		{
+		selectionSize_ = noSelection_;
+		}
+
+	template<typename TRayArray>
+	bool TBasicTM25RaySet<TRayArray>::SelectionActive() const
+		{
+		return selectionSize_ != noSelection_;
+		}
+
+	template<typename TRayArray>
+	inline std::vector<typename TBasicTM25RaySet<TRayArray>::TFluxBin> TBasicTM25RaySet<TRayArray>::FluxHistogram(size_t nBins) const
+		{
+		size_t powerCol = PowerColumn();
+		std::vector<TFluxBin> rv(nBins);
+		size_t n = NRays();
+		float maxFlux = 0;
+		for (size_t i = 0; i < n; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			float iflux = *(r + powerCol);
+			if (iflux > maxFlux)
+				maxFlux = iflux;
+			}
+		for (size_t i = 0; i < nBins; ++i)
+			{
+			rv[i].fluxLimit_ = ((i + 1) * maxFlux) / nBins;
+			rv[i].nRays_ = 0;
+			rv[i].fluxInBin_ = 0;
+			}
+		for (size_t i = 0; i < n; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			float flux = *(r + powerCol);
+			size_t ibin = static_cast<size_t>(floor(nBins * flux / maxFlux));
+			if (ibin >= nBins) ibin = nBins - 1;
+			rv[ibin].nRays_ += 1;
+			rv[ibin].fluxInBin_ += *(r + 6);
+			}
+		return rv;
 		}
 
 	template<typename TRayArray>
@@ -84,10 +359,8 @@ namespace TM25
 		header_ = TTM25Header();
 		std::string section;
 		auto Is0or1 = [](int i) {return (i == 0) || (i == 1); };
-		auto IsNonNegOrsNaN = [](float i) {return (i == 0.0f) || (std::isnormal(i) && i > 0.0f) ||
-			(i == std::numeric_limits<float>::signaling_NaN()); };
-		auto IsPosOrsNaN = [](float i) {return (i > 0.0f) ||
-			(i == std::numeric_limits<float>::signaling_NaN()); };
+		auto IsNonNegOrsNaN = [](float i) {return (i == 0.0f) || (std::isnormal(i) && i > 0.0f) || std::isnan(i); };
+		auto IsPosOrsNaN = [](float i) {return (i > 0.0f) || isnan(i); };
 		auto Is0to4 = [](int i) {return (i >= 0) && (i <= 4); };
 		auto TestFlag01 = [Is0or1](int i, const std::string& s) {if (!Is0or1(i))
 			throw TM25Error(s + " (" + std::to_string(i) + ") must be 0 or 1"); };
@@ -326,7 +599,7 @@ namespace TM25
 		}
 
 	template<typename TRayArray>
-	void TBasicTM25RaySet<TRayArray>::ReadRayData(TReadFile& f)
+	void TBasicTM25RaySet<TRayArray>::ReadRayData(TReadFile& f, bool normalize_k)
 		{
 		size_t nRays = header_.n_rays_4_7_1_6;
 		size_t nItems = items_.NTotalItems();
@@ -338,7 +611,7 @@ namespace TM25
 		for (size_t i = 0; i < nRays; ++i)
 			{
 			f.Read<float>(rayHolder, nItems);
-			CheckRay(errMap, warnMap, rayHolder, itemIndices, i);
+			CheckRay(errMap, warnMap, rayHolder, normalize_k, itemIndices, i);
 			ray_array_.SetRay(i, rayHolder);
 			}
 		for (auto w : warnMap)
@@ -354,6 +627,128 @@ namespace TM25
 			}
 		if (!s.str().empty())
 			throw TM25Error("TBasicTM25RaySet<TRayArray>::ReadRayData:\n" + s.str());
+		}
+
+	template<typename TRayArray>
+	inline void TBasicTM25RaySet<TRayArray>::WriteHeader(TWriteFile & f) const
+		{
+		const TTM25Header& h = Header();
+		// 4.7.1. file header block
+		// 4.7.1.1 file type
+		f.Write<char>('T');
+		f.Write<char>('M');
+		f.Write<char>('2');
+		f.Write<char>('5');
+		// 4.7.1.2 file version
+		f.Write<int32_t>(h.version_4_7_1_2);
+		// 4.7.1.3 creation method
+		f.Write<int32_t>(h.creation_method_4_7_1_3);
+		// 4.7.1.4 luminous flux
+		f.Write<float>(h.phi_v_4_7_1_4);
+		// 4.7.1.5 radiant flux
+		f.Write<float>(h.phi_4_7_1_5);
+		// 4.7.1.6 # of rays
+		f.Write<uint64_t>(
+			// h.n_rays_4_7_1_6
+			NRays()
+			);
+		// 4.7.1.7 file creation date
+		std::string tmp = h.file_date_time_str_4_7_1_7.substr(0, 28);
+		size_t test = f.WriteRange(tmp.begin(), tmp.end());
+		f.WriteZeroBytes(28 - test);
+		// 4.7.1.8 ray start position
+		f.Write<int32_t>(h.start_position_4_7_1_8);
+		// 4.7.1.9 spectrum type
+		f.Write<int32_t>(h.spectrum_type_4_7_1_9);
+		// 4.7.1.10 single wavelength
+		f.Write<float>(h.lambda_4_7_1_10);
+		// 4.7.1.11 min wavelength
+		f.Write<float>(h.lambda_min_4_7_1_11);
+		// 4.7.1.12 max wavelength
+		f.Write<float>(h.lambda_max_4_7_1_12);
+		// 4.7.1.13 spectral tables
+		f.Write<int32_t>(h.n_spectra_4_7_1_13);
+		// 4.7.1.14 # of addtl items
+		f.Write<int32_t>(h.n_addtl_items_4_7_1_14);
+		// 4.7.1.15 size of addtl text
+		f.Write<int32_t>(static_cast<int32_t>(sizeof(char32_t) *  h.additional_text_4_7_6.size()));
+		// 4.7.1.16 reserved
+		f.WriteZeroBytes(168);
+		if (f.BytesWritten() != 256)
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::WriteHeader: file header block 4.7.1 is not size 256");
+		// 4.7.2 Known Data Flags Block
+		// 4.7.2.1 position flag
+		f.Write<int32_t>(1);
+		// 4.7.2.2 direction flag
+		f.Write<int32_t>(1);
+		// 4.7.2.3 radiant flux flag
+		f.Write<int32_t>(h.rad_flux_flag_4_7_2_3 ? 1 : 0);
+		// 4.7.2.4 wavelength flag
+		f.Write<int32_t>(h.lambda_flag_4_7_2_4 ? 1 : 0);
+		// 4.7.2.5 luminous flux flag
+		f.Write<int32_t>(h.lum_flux_flag_4_7_2_5 ? 1 : 0);
+		// 4.7.2.6 Stokes flag
+		f.Write<int32_t>(h.stokes_flag_4_7_2_6 ? 1 : 0);
+		// 4.7.2.7 Tristimulus flag
+		f.Write<int32_t>(h.tristimulus_flag_4_7_2_7 ? 1 : 0);
+		// 4.7.2.8 spectrum index flag
+		f.Write<int32_t>(h.spectrum_index_flag_4_7_2_8 ? 1 : 0);
+		if (f.BytesWritten() != 256 + 32)
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::WriteHeader: known flags block 4.7.2 is not size 32");
+		// 4.7.3 Description header block
+		// 4.7.3.1 light source 
+		f.WriteUTF32TextBlock(h.name_4_7_3_1, 4000);
+		// 4.7.3.2 manufacturer
+		f.WriteUTF32TextBlock(h.manufacturer_4_7_3_2, 4000);
+		// 4.7.3.3 model creator 
+		f.WriteUTF32TextBlock(h.model_creator_4_7_3_3, 4000);
+		// 4.7.3.4 ray file creator 
+		f.WriteUTF32TextBlock(h.rayfile_creator_4_7_3_4, 4000);
+		// 4.7.3.5 equipment 
+		f.WriteUTF32TextBlock(h.equipment_4_7_3_5, 4000);
+		// 4.7.3.6 camera
+		f.WriteUTF32TextBlock(h.camera_4_7_3_6, 4000);
+		// 4.7.3.7 light source operation
+		f.WriteUTF32TextBlock(h.lightsource_4_7_3_7, 4000);
+		// 4.7.3.8 addtl info
+		f.WriteUTF32TextBlock(h.additional_info_4_7_3_8, 4000);
+		// 4.7.3.9 data reference
+		f.WriteUTF32TextBlock(h.data_reference_4_7_3_9, 4000);
+		if (f.BytesWritten() != 256 + 32 + 36000)
+			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::WriteHeader: description block 4.7.3 is not size 36000");
+		// 4.7.4 spectral tables block
+		size_t startBytes = f.BytesWritten();		
+		for (const auto& st : h.spectra_4_7_4)
+			{
+			f.Write<int32_t>(static_cast<int32_t>(st.lambda_.size()));
+			auto lam = st.lambda_.begin();
+			auto wt = st.weight_.begin();
+			for (; lam != st.lambda_.end(); ++lam, ++wt)
+				{
+				f.Write<float>(*lam);
+				f.Write<float>(*wt);
+				}
+			}
+		size_t endBytes = f.BytesWritten();
+		size_t padding = (endBytes - startBytes) % 32;
+		if (padding)
+			f.WriteZeroBytes(padding);
+		// 4.7.5 additional ray data column labels
+		for (const auto& cn : h.column_names_4_7_5)
+			{
+			f.WriteUTF32TextBlock(cn, 512);
+			}
+		// 4.7.6 additional text block
+		f.WriteUTF32TextBlock(h.additional_text_4_7_6, sizeof(char32_t) * h.additional_text_4_7_6.size());
+		}
+
+	template<typename TRayArray>
+	inline void TBasicTM25RaySet<TRayArray>::WriteRayData(TWriteFile & f) const
+		{
+		size_t nRays = NRays();
+		size_t nItems = ray_array_.NItems();
+		for (size_t i = 0; i < nRays; ++i)
+			f.WriteBytes(ray_array_.GetRayDirect(i), sizeof(float) * nItems);
 		}
 
 	template<typename TRayArray>
@@ -395,7 +790,8 @@ namespace TM25
 	bool TBasicTM25RaySet<TRayArray>::CheckRay(
 		std::map<RayErrors, size_t>& err,
 		std::map<RayWarnings, size_t>& warn,
-		const std::vector<float>& r,
+		std::vector<float>& r, 
+		bool normalize_k,
 		const std::array<size_t, nStdItems>& itemIndices,
 		size_t i)
 		{
@@ -428,7 +824,7 @@ namespace TM25
 		auto present = [&itemIndices, &to_i](RayItem ri)
 			{return itemIndices[to_i(ri)] != TRaySetItems::absent; };
 		// get the value of a RayItem, precondition: present
-		auto val = [&r, &to_i, &itemIndices](RayItem ri)
+		auto val = [&r, &to_i, &itemIndices](RayItem ri) -> float&
 			{
 			size_t idx = itemIndices[to_i(ri)];
 			return r[idx];
@@ -438,7 +834,16 @@ namespace TM25
 			{
 			float k = sqr(val(RayItem::kx)) + sqr(val(RayItem::ky)) + sqr(val(RayItem::kz));
 			if (abs(k - 1.0f) > eps)
+				{
 				setWarn(RayWarnings::kNotNormalized);
+				if (normalize_k)
+					{
+					k = sqrt(k);
+					val(RayItem::kx) /= k;
+					val(RayItem::ky) /= k;
+					val(RayItem::kz) /= k;
+					}
+				}
 			}
 		//radFluxNotPositive,
 		if (present(RayItem::phi))
@@ -499,4 +904,40 @@ namespace TM25
 		return rv;
 		}
 
+		template<typename TRayArray>
+		size_t TBasicTM25RaySet<TRayArray>::PowerColumn() const
+			{
+			size_t powerCol;
+			auto itemIndices = items_.ItemIndices();
+			if (items_.IsPresent(TM25::RayItem::phi))
+				powerCol = itemIndices[static_cast<size_t>(TM25::RayItem::phi)];
+			else // luminous flux must be present!
+				{
+				if (!items_.IsPresent(TM25::RayItem::Tri_Y))
+					throw std::runtime_error("ray file is ill-formed: neither radiant nor luminous flux present, see IES-TM-25-13 4.7.2.3");
+				powerCol = itemIndices[static_cast<size_t>(TM25::RayItem::Tri_Y)];
+				}
+			return powerCol;
+			}
+
+		template< size_t N>
+		void TDefaultRayArray::SetRay(size_t i, const std::array<float, N>& ray)
+			{
+			if (i >= nRays_)
+				{
+				std::stringstream s;
+				s << "TDefaultRayArray::SetRay<N>: i (" << i << ") >= NRays() (" << nRays_ << ")";
+				throw TM25Error(s.str());
+				}
+			if (N != nItems_)
+				{
+				std::stringstream s;
+				s << "TDefaultRayArray::SetRay<N>: ray.size() (" << ray.size() <<
+					") != NItems() (" << nItems_ << ")";
+				throw TM25Error(s.str());
+				}
+			// std::copy(ray.begin(), ray.end(), data_.begin() + i * NItems());
+			std::memcpy(data_.data() + i * nItems_, ray.data(), sizeof(float) * N);
+			}
+	
 	}
