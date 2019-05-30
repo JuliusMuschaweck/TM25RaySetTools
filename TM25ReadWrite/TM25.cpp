@@ -436,7 +436,7 @@ namespace TM25
 		for (const auto& sp : spectra_4_7_4)
 			{
 			++i_sp;
-			rv.Fatal(sp.idx_ <= 1, "4.7.4: index " + std::to_string(sp.idx_) + " must be > 0 in spectrum # " + std::to_string(i_sp));
+			rv.Fatal(sp.idx_ < 1, "4.7.4: index " + std::to_string(sp.idx_) + " must be > 0 in spectrum # " + std::to_string(i_sp));
 			for (auto lam : sp.lambda_)
 				rv.Fatal(!(lam > 0.0f), "4.7.4: non positive wavelength " + std::to_string(lam) + " in spectrum " + std::to_string(i_sp));
 			for (auto wt : sp.weight_)

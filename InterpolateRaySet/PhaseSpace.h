@@ -160,7 +160,7 @@ typename TZAxisStereographicSphericalPhaseSpace<R>::TLoc TZAxisStereographicSphe
 	Real zp = p.second[2] - zpole;
 	if (zp <= 0)
 		throw std::runtime_error("TZAxisStereographicSphericalPhaseSpace<R>::Loc: Intersection is at - z pole");
-	Real projFac = zp / radius_;
+	Real projFac = radius_ / zp;
 	return TLoc{ projFac * (p.second[0] - center_[0]), projFac * (p.second[1] - center_[1]) };
 	}
 
@@ -250,8 +250,19 @@ typename TZAxisStereographicSphericalPhaseSpace<R>::TV3 TZAxisStereographicSpher
 	// compute sine and cosine of back rotation angle
 	Real loc2 = loc.x0_*loc.x0_ + loc.x1_*loc.x1_;
 	Real r2 = radius_ * radius_;
-	Real k2 = sqrt(1 - dir.k0_*dir.k0_ - dir.k1_*dir.k1_);
-	TV3 k{ dir.k0_, dir.k1_, k2 };
+	// make sure dir is inside unit circle * 0.99
+	constexpr Real _099 = static_cast<Real>(0.99);
+	Real k0 = dir.k0_;
+	Real k1 = dir.k1_;
+	Real test = k0*k0 + k1*k1;
+	if (test > _099)
+		{
+		Real fac = _099 / sqrt(test);
+		k0 *= fac;
+		k1 *= fac;
+		}
+	Real k2 = sqrt(1 - (k0*k0 + k1*k1));
+	TV3 k{k0, k1, k2 };
 	if (loc2 < (10 * r2 * std::numeric_limits<Real>::epsilon())) // on or very near axis -> k is correctly oriented
 		return k;
 	Real c = (r2 - loc2) / (r2 + loc2); // cosine of rotation angle:

@@ -6,6 +6,8 @@
 #include <fstream>
 #include <array>
 #include <vector> 
+#include "../InterpolateRaySet/KDTree.h"
+
 void TestBuf()
 	{
 	//std::ifstream f("..\\rayfile_LERTDUW_S2WP_20161017_IES_TM25.zip", std::ios::binary);
@@ -20,6 +22,10 @@ void TestBuf()
 int main()
 {
     std::cout << "Hello World!\n"; 
+	if (KDTree::Def::dim == 2)
+		KDTree::TestKDTree2D("TestKDTree.m");
+	if (KDTree::Def::dim == 4)
+		KDTree::TestKDTree4D();
 	TestBuf();
 	}
 

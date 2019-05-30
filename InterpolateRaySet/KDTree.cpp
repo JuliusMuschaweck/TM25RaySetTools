@@ -43,10 +43,10 @@ namespace KDTree
 
 	void TKDTree::CheckConsistency() const
 		{
-		auto Check = [](bool test, std::string message)
+		auto Check = [](bool test, const char* message)
 			{
 			if (!test) 
-				throw std::runtime_error("TKDTree::CheckConsistency: " + message); 
+				throw std::runtime_error("TKDTree::CheckConsistency: " + std::string(message)); 
 			};
 		// uint32 can hold # of points
 		Check(pts_.size() < std::numeric_limits<TIdx>::max(), "too many points");
@@ -344,7 +344,9 @@ namespace KDTree
 		const TNode& node = Node(inode);
 		const TKDPoint& lo = node.corner0_;
 		const TKDPoint& hi = node.corner1_;
-		TKDPoint pt{ 0.5f*(lo[0] + hi[0]),0.5f*(lo[1] + hi[1]), 0.5f*(lo[2] + hi[2]), 0.5f*(lo[3] + hi[3]) };
+		TKDPoint pt;
+		for (int i = 0; i < Def::dim; ++i)
+			pt[i] = static_cast<TReal>(0.5) * (lo[i] + hi[i]);
 		return NearestNeighborsOfNode(inode, pt, n);
 		}
 
@@ -629,11 +631,17 @@ namespace KDTree
 		return true;
 		}
 
+	Def::TKDPoint MidPoint(const Def::TKDPoint & p0, const Def::TKDPoint & p1)
+		{
+		Def::TReal _5 = static_cast<Def::TReal>(0.5);
+		return Def::TKDPoint{_5*(p0[0]+p1[0]),_5*(p0[1] + p1[1]), _5*(p0[2] + p1[2]), _5*(p0[3] + p1[3]) };
+		}
+
 
 	void TestKDTree2D(std::string fn)
 		{
 		assert(Def::dim == 2);
-		size_t npts = 1000*1000;
+		size_t npts = 1000;
 		Def::TKDPoints pts;
 		std::mt19937 gen;
 		gen.seed();
@@ -803,6 +811,54 @@ namespace KDTree
 		Def::TReal rv = corner1_[0] - corner0_[0];
 		for (int i = 1; i < Def::dim; ++i)
 			rv *= corner1_[i] - corner0_[i];
+		return rv;
+		}
+
+		// partition node into nPoints sub-blocks which all have same volume.
+		// precondition: point must be within this node bounding box
+		// returns list of points within sub-blocks. These points are all at center, except for the sub-block which contains pt
+		// rv has nPoints-1 center points and pt
+	std::vector<Def::TKDPoint> TNode::Partition(Def::TIdx nPoints, const Def::TKDPoint & pt) const
+		{
+		if (!IsInBox({ corner0_,corner1_ }, pt))
+			throw std::runtime_error("TNode::Partition: pt not in bounding box");
+		struct S { Def::TIdx has_n; size_t slice_dim;  Def::TKDPoint c0; Def::TKDPoint c1;};
+		std::stack<S> work;
+		size_t slicedim = 0;
+		work.push(S{ nPoints, slicedim, corner0_, corner1_ });
+		std::vector<Def::TKDPoint> rv;
+		bool ptTakenCareOf = false;
+		while (!(work.empty()))
+			{
+			S todo = work.top();
+			work.pop();
+			slicedim = todo.slice_dim;
+			if (todo.has_n == 1)
+				{
+				if (!ptTakenCareOf && IsInBox({ todo.c0, todo.c1 }, pt))
+					{
+					rv.push_back(pt);
+					ptTakenCareOf = true;
+					}
+				else
+					rv.push_back(MidPoint(todo.c0, todo.c1));
+				}
+			else
+				{
+				using R = Def::TReal;
+				Def::TIdx nlo = todo.has_n / 2;
+				Def::TIdx nhi = todo.has_n - nlo;
+				R fac = static_cast<R>(nlo) / static_cast<R> (todo.has_n);
+				Def::TKDPoint c1lo = todo.c1;
+				c1lo[todo.slice_dim] = todo.c0[todo.slice_dim] * (1-fac) + todo.c1[todo.slice_dim] * fac;
+				Def::TKDPoint c0hi = todo.c0;
+				c0hi[todo.slice_dim] = c1lo[todo.slice_dim];
+				S lo{ nlo, (slicedim + 1) % Def::dim, todo.c0, c1lo };
+				S hi{ nhi, lo.slice_dim, c0hi, todo.c1 };
+				work.push(lo);
+				work.push(hi);
+				}
+			}
 		return rv;
 		}
 } // end namespace

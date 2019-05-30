@@ -162,6 +162,7 @@
     <ClCompile Include="..\TM25ReadWrite\ReadFile.cpp" />
     <ClCompile Include="..\TM25ReadWrite\TM25.cpp" />
     <ClCompile Include="..\TM25ReadWrite\TM25Util.cpp" />
+    <ClCompile Include="..\TM25ReadWrite\WriteFile.cpp" />
     <ClCompile Include="InterpolateRaySet.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="PhaseSpace.cpp" />
@@ -172,6 +173,7 @@
     <ClInclude Include="..\TM25ReadWrite\TM25.h" />
     <ClInclude Include="..\TM25ReadWrite\TM25Util.h" />
     <ClInclude Include="..\TM25ReadWrite\TM25_impl.h" />
+    <ClInclude Include="..\TM25ReadWrite\WriteFile.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="PhaseSpace.h" />
   </ItemGroup>

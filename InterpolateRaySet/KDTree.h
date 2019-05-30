@@ -14,13 +14,14 @@ namespace KDTree
 	class Def
 		{
 		public:
+			static constexpr size_t dim = 4;
+
 			using TReal = float;
 			using TIdx = std::uint32_t;
 			struct TPointIdx { TIdx pi_; }; // index into array of points
 			struct TIdxIdx { TIdx ii_; }; // index into array of TPointIdx
 			struct TNodeIdx { TIdx ni_; };
 			static constexpr TIdx invalidIdx = std::numeric_limits<TIdx>::max();
-			static constexpr size_t dim = 4;
 			using TKDPoint = std::array<TReal, dim>;
 			using TKDPoints = std::vector<TKDPoint>;
 			// using TIdxArray = std::vector<TIdx>;
@@ -36,6 +37,7 @@ namespace KDTree
 
 	bool IsInBox(const std::pair<Def::TKDPoint, Def::TKDPoint>& boundingBox, const Def::TKDPoint& pt);
 	bool AreInBox(const std::pair<Def::TKDPoint, Def::TKDPoint>& boundingBox, const Def::TKDPoints& pts);
+	Def::TKDPoint MidPoint(const Def::TKDPoint& p0, const Def::TKDPoint& p1);
 
 	struct TNode
 		{
@@ -59,6 +61,12 @@ namespace KDTree
 		Def::TIdx NPoints() const { return endpt_.ii_ - beginpt_.ii_; }
 		Def::TReal Distance(const Def::TKDPoint& pt) const; // return distance of pt to nearest corner, 0 if inside
 		Def::TReal Volume() const;
+
+		// partition node into nPoints sub-blocks which all have same volume.
+		// precondition: point must be within this node bounding box
+		// returns list of points within sub-blocks. These points are all at center, except for the sub-block which contains pt
+		// rv has nPoints-1 center points and pt
+		std::vector<Def::TKDPoint> Partition(Def::TIdx nPoints, const Def::TKDPoint& pt) const;
 		};
 
 	class TKDTree: public Def
@@ -81,6 +89,22 @@ namespace KDTree
 			const TIdxIdxArray& ReverseIndex() const; // the inverse permutation of Index()
 			const TNodeIdxArray& NodeIndex() const; // which leaf node contains the i'th point in Points()
 			std::pair<TKDPoint, TKDPoint> BoundingBox() const;
+
+			// make indices into various arrays type safe
+			// convention: use only these access functions. Could be implemented by creating proxy classes for pts_,idx_,reverseIdx_ etc
+			// but that is just too much effort.
+			TPointIdx  Index(TIdxIdx ii) const { return idx_[ii.ii_]; };
+			TPointIdx& Index(TIdxIdx ii) { return idx_[ii.ii_]; };
+			TIdxIdx  ReverseIndex(TPointIdx pi) const { return reverseIdx_[pi.pi_]; };
+			TIdxIdx& ReverseIndex(TPointIdx pi) { return reverseIdx_[pi.pi_]; };
+			TNodeIdx  NodeIndex(TPointIdx pi) const { return nodeIdx_[pi.pi_]; }
+			TNodeIdx& NodeIndex(TPointIdx pi) { return nodeIdx_[pi.pi_]; }
+
+			const TKDPoint& Point(TPointIdx pi) const { return pts_[pi.pi_]; };
+			TKDPoint& Point(TPointIdx pi) { return pts_[pi.pi_]; };
+
+			const TNode& Node(TNodeIdx ni) const { return nodes_[ni.ni_]; };
+			TNode& Node(TNodeIdx ni) { return nodes_[ni.ni_]; };
 
 
 			// return the index of the node which contains pt. If out of bounds, returns invalidIdx. 
@@ -117,21 +141,6 @@ namespace KDTree
 			TNodeIdx PopWork();
 			void SplitNext();
 
-			// make indices into various arrays type safe
-			// convention: use only these access functions. Could be implemented by creating proxy classes for pts_,idx_,reverseIdx_ etc
-			// but that is just too much effort.
-			TPointIdx  Index(TIdxIdx ii) const { return idx_[ii.ii_]; };
-			TPointIdx& Index(TIdxIdx ii) { return idx_[ii.ii_]; };
-			TIdxIdx  ReverseIndex(TPointIdx pi) const { return reverseIdx_[pi.pi_]; };
-			TIdxIdx& ReverseIndex(TPointIdx pi) { return reverseIdx_[pi.pi_]; };
-			TNodeIdx  NodeIndex(TPointIdx pi) const { return nodeIdx_[pi.pi_]; }
-			TNodeIdx& NodeIndex(TPointIdx pi) { return nodeIdx_[pi.pi_]; }
-
-			const TKDPoint& Point(TPointIdx pi) const { return pts_[pi.pi_]; };
-			TKDPoint& Point(TPointIdx pi) { return pts_[pi.pi_]; };
-
-			const TNode& Node(TNodeIdx ni) const { return nodes_[ni.ni_]; };
-			TNode& Node(TNodeIdx ni) { return nodes_[ni.ni_]; };
 
 			TKDPoints pts_;
 			std::array<std::vector<Def::TReal>, Def::dim> ptCoords_; // rearranged pts_ for linear access of individual coordinates, avoids page faults in splitting algorithm

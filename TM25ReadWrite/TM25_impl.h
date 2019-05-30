@@ -731,8 +731,8 @@ namespace TM25
 			}
 		size_t endBytes = f.BytesWritten();
 		size_t padding = (endBytes - startBytes) % 32;
-		if (padding)
-			f.WriteZeroBytes(padding);
+		if (padding) // fill up with zeros until multiple of 32
+			f.WriteZeroBytes(32 - padding);
 		// 4.7.5 additional ray data column labels
 		for (const auto& cn : h.column_names_4_7_5)
 			{
