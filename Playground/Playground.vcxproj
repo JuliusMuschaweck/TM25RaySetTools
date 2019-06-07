@@ -152,9 +152,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\InterpolateRaySet\KDTree.h" />
+    <ClInclude Include="..\InterpolateRaySet\Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\InterpolateRaySet\KDTree.cpp" />
+    <ClCompile Include="..\InterpolateRaySet\Timer.cpp" />
     <ClCompile Include="Playground.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

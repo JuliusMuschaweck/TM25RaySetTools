@@ -10,6 +10,7 @@ or http://unlicense.org/
 #include <limits>
 #include <sstream>
 #include <cassert>
+#include <random>
 
 namespace TM25
 	{
@@ -448,7 +449,7 @@ namespace TM25
 		return rv;
 		}
 
-// ********************************************************************
+	// ********************************************************************
 	// TDefaultRayArray implementation
 	TDefaultRayArray::TDefaultRayArray()
 		: nRays_(0), nItems_(0) {};
@@ -584,7 +585,7 @@ namespace TM25
 
 	std::pair<TVec3f, TVec3f> TDefaultRayArray::BoundingBox() const
 		{
-		float minflt = std::numeric_limits<float>::min();
+		float minflt = std::numeric_limits<float>::lowest();
 		float maxflt = std::numeric_limits<float>::max();
 
 		std::pair<TVec3f, TVec3f> rv({ maxflt, maxflt, maxflt }, { minflt, minflt, minflt });
@@ -605,6 +606,49 @@ namespace TM25
 			check(rv.first[2], rv.second[2], *iray);
 			}
 		return rv;
+		}
+
+	// uniform size_t random numbers
+	class TUniformIntGen
+		{
+		public:
+			TUniformIntGen() :gen(rd()), urd(0.0,1.0) {};
+
+			// return random size_t rv in i0 <=rv < i1
+			// precondition: i0 < i1
+			size_t operator()(size_t i0, size_t i1)
+				{
+				double r = urd(gen);
+				size_t rv = static_cast<size_t>(floor((1 - r)*i0 + r * i1));
+				if (rv < i0)
+					rv = i0;
+				if (rv >= i1)
+					rv = i1 - 1;
+				return rv;
+				};
+		private:
+			std::random_device rd;  //Will be used to obtain a seed for the random number engine
+			std::mt19937 gen; //Standard mersenne_twister_engine seeded with rd()
+			std::uniform_real_distribution<double> urd;
+		};
+
+	void TDefaultRayArray::Shuffle(size_t ibegin, size_t iend) // Fisher-Yates shuffle
+		{
+		if (iend <= (ibegin + 1))
+			return;
+		if (iend > nRays_)
+			throw std::runtime_error("TDefaultRayArray::Shuffle: iend out of range");
+		TUniformIntGen ig;
+		for (size_t i = iend - 1; i > 0; --i)
+			{
+			size_t j = ig(0, i + 1);
+			if (i != j)
+				{
+				float* ri = GetRayDirect(i);
+				float* rj = GetRayDirect(j);
+				std::swap_ranges(ri, ri + nItems_, rj);
+				}
+			}
 		}
 
 	} // namespace TM25

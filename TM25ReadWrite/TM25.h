@@ -218,11 +218,17 @@ namespace TM25
 			void UnselectSubset();
 			bool SelectionActive() const; // true if selection has shrunk the ray set
 
+			// scramble ray sequence, separately for selection and remainder
+			void Shuffle();
+
+			// diagnostic output
+			std::string Diagnostics() const;
+
 			// create flux histogram: see if ray file has mostly constant flux or many rays with small flux
 			struct TFluxBin { double fluxLimit_; size_t nRays_; double fluxInBin_; };
 			std::vector<TFluxBin> FluxHistogram(size_t nBins) const;
 
-		private:
+		private: // private functions and type definítions
 			void ReadHeader(TReadFile& f);
 			void ReadRayData(TReadFile& f, bool normalize_k);
 
@@ -260,6 +266,8 @@ namespace TM25
 			// thus, ray file can be fully read and first occurrence of any
 			// error or warning is available
 			size_t PowerColumn() const; // zero based! Returns rad. flux column when present, else lum flux column (one of them must be present)
+
+		private: // private members
 			TTM25Header header_;
 			TRaySetItems items_;
 			TRayArray ray_array_;
@@ -304,6 +312,7 @@ namespace TM25
 			const std::vector<float>& Data() const;
 			std::pair<TVec3f,TVec3f> BoundingBox() const; // no column information needed -- x and k are in the first six columns
 
+			void Shuffle(size_t ibegin, size_t iend); // Fisher-Yates shuffle of range [ibegin;iend[
 		private:
 			size_t nRays_;
 			size_t nItems_;

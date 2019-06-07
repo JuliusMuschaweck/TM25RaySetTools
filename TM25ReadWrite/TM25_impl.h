@@ -322,6 +322,58 @@ namespace TM25
 		}
 
 	template<typename TRayArray>
+	void TBasicTM25RaySet<TRayArray>::Shuffle()
+		{
+		if (SelectionActive())
+			{
+			ray_array_.Shuffle(0, selectionSize_);
+			ray_array_.Shuffle(selectionSize_, ray_array_.NRays());
+			}
+		else
+			ray_array_.Shuffle(0, ray_array_.NRays());
+		}
+
+	template<typename TRayArray>
+	std::string TBasicTM25RaySet<TRayArray>::Diagnostics() const
+		{
+		std::stringstream rv;
+		auto bb = RayArray().BoundingBox();
+		rv << "Bounding Box: x in [" << bb.first[0] << ',' << bb.second[0] << "], y in ["
+			<< bb.first[1] << ',' << bb.second[1] << "], z in [" << bb.first[2] << ',' << bb.second[2] << "]" << '\n';
+		auto vf = VirtualFocus();
+		rv << "Virtual Focus: F = [" << vf[0] << ',' << vf[1] << ',' << vf[2] << ']' << '\n';
+		rv << "Maximum distance: d = " << MaxDistance(vf) << '\n';
+		auto dh = DistanceHistogram(vf, 10);
+		rv << "Distance histogram:\n";
+		size_t i = 0;
+		size_t nRaysHisto = 0;
+		double fluxHisto = 0;
+		for (auto idh : dh)
+			{
+			nRaysHisto += idh.nRays_;
+			fluxHisto += idh.flux_;
+			rv << "bin " << i++ << ": distance <= " << idh.dist_ << ", # of rays = " << idh.nRays_ << '/' << nRaysHisto
+				<< ", flux = " << idh.flux_ << '/' << fluxHisto << '\n';
+			}
+		rv << "total # of rays = " << nRaysHisto << ", total flux = " << fluxHisto << '\n';
+
+		auto fh = FluxHistogram(10);
+		rv << "Flux histogram:\n";
+		i = 0;
+		nRaysHisto = 0;
+		fluxHisto = 0;
+		for (auto ifh : fh)
+			{
+			nRaysHisto += ifh.nRays_;
+			fluxHisto += ifh.fluxInBin_;
+			rv << "bin " << i++ << ": flux <= " << ifh.fluxLimit_ << ", # of rays = " << ifh.nRays_ << '/' << nRaysHisto
+				<< ", flux = " << ifh.fluxInBin_ << '/' << fluxHisto << '\n';
+			}
+		rv << "total # of rays = " << nRaysHisto << ", total flux = " << fluxHisto << '\n';
+		return rv.str();
+		}
+
+	template<typename TRayArray>
 	inline std::vector<typename TBasicTM25RaySet<TRayArray>::TFluxBin> TBasicTM25RaySet<TRayArray>::FluxHistogram(size_t nBins) const
 		{
 		size_t powerCol = PowerColumn();
