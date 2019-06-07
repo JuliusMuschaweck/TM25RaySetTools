@@ -31,5 +31,5 @@ adding issues, and pull requests if you'd like to provide your own additions / b
 
 Enjoy!
 
-Gauting, Jan. 21, 2019
+Gauting, Germany, on a sunny day in 2019
 Julius Muschaweck
