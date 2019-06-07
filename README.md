@@ -26,6 +26,10 @@ Currently, the software is available as a Visual Studio 2017 project. I have tri
 my best to write it in portable way, using only C++ constructs from the C++11 standard.
 I'm planning to test it on a Linux/gcc platform as well, and to add more features.
 
+If you're interested in the InterpolateRaySet project I'll present at DGaO in June,
+build it with Visual Studio 2017, and set the command line parameters to the 
+file name of the configuration file, InterpolateRaySetTest.cfg.
+
 As always, I'm looking forward to your feedback. Please use the standard GitHub workflow,
 adding issues, and pull requests if you'd like to provide your own additions / bug fixes.
 
