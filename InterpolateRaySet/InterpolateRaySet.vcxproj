@@ -93,6 +93,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile />
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -110,6 +111,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile />
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +131,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile />
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,6 +153,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile />
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -163,9 +167,12 @@
     <ClCompile Include="..\TM25ReadWrite\TM25.cpp" />
     <ClCompile Include="..\TM25ReadWrite\TM25Util.cpp" />
     <ClCompile Include="..\TM25ReadWrite\WriteFile.cpp" />
+    <ClCompile Include="CfgFile.cpp" />
     <ClCompile Include="InterpolateRaySet.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="PhaseSpace.cpp" />
+    <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="Tokenize.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\TM25ReadWrite\LinAlg3.h" />
@@ -174,8 +181,11 @@
     <ClInclude Include="..\TM25ReadWrite\TM25Util.h" />
     <ClInclude Include="..\TM25ReadWrite\TM25_impl.h" />
     <ClInclude Include="..\TM25ReadWrite\WriteFile.h" />
+    <ClInclude Include="CfgFile.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="PhaseSpace.h" />
+    <ClInclude Include="Timer.h" />
+    <ClInclude Include="Tokenize.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

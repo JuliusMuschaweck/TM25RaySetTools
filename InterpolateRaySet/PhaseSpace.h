@@ -22,7 +22,6 @@ struct TDirR
 	};
 
 
-
 // returns the point where the ray r0,k leaves the sphere at center with radius
 // precondition: k is unit vector
 template<typename R>
@@ -68,11 +67,44 @@ class TZAxisStereographicSphericalPhaseSpace
 	};
 
 
+
+
+// Phase space on infinite plane perpendicular to z axis
+// for direction, k0 and k1 are aligned with x and y
+// AreaScale always returns 1
+template<typename R>
+class TPlanarZPhaseSpace
+	{
+	public:
+		using Real = R;
+		using TLoc = TLocR<Real>;
+		using TDir = TDirR<Real>;
+		using TV3 = TVec3<Real>;
+		TPlanarZPhaseSpace(Real z0 = 0) : z0_(z0) {};
+		TLoc Loc(const TV3& r, const TV3& k) const;
+		TDir Dir(const TLoc& loc, const TV3& k) const;
+		std::pair<bool, TLoc> LocIf(const TV3& r, const TV3& k) const;
+		std::tuple<TLoc, TDir> LocDir(const TV3& r, const TV3& k) const;
+
+		std::array<Real, 4> PhaseSpacePoint(const TV3& r, const TV3& k) const;
+		std::pair<bool, std::array<Real, 4>> PhaseSpacePointIf(const TV3& r, const TV3& k) const;
+
+		TV3 Loc_to_V3(const TLoc& loc) const;
+		TV3 Dir_to_V3(const TLoc& loc, const TDir& dir) const;
+
+		Real AreaScale(const TLoc& loc) const;
+
+	private:
+		Real z0_;
+	};
+
+
 // Phase space on infinite plane, given by origin and the two e0, e1 axes
 // Construction ensures that e0 and e1 are orthogonal unit vectors (e1 is rotated if needed)
 // the two location coordinates are the e0 e1 components
 // for direction, k0 and k1 are aligned with e0 and e1
 // AreaScale always returns 1
+// NOT YET IMPLEMENTED
 template<typename R>
 class TPlanarPhaseSpace
 	{
@@ -297,6 +329,91 @@ R TZAxisStereographicSphericalPhaseSpace<R>::AreaScale(const TLoc & loc) const
 	Real r2 = sqr(radius_);
 	return 4 / sqr(1 + loc2 / r2);
 	}
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+template<typename R>
+typename TPlanarZPhaseSpace<R>::TLoc TPlanarZPhaseSpace<R>::Loc(const TV3& r, const TV3& k) const
+	{
+	TLoc rv;
+	const Real dz = z0_ - r[2];
+	if ((dz != 0) && (k[2] == 0))
+		throw std::runtime_error("TPlanarZPhaseSpace<R>::Loc: no intersection with plane");
+	if (k[2] < 0)
+		throw std::runtime_error("TPlanarZPhaseSpace<R>::Loc: no ray with kz<0 allowed");
+	Real fac = dz / k[2];
+	rv.x0_ = r[0] + k[0] * fac;
+	rv.x1_ = r[1] + k[1] * fac;
+	return rv;
+	}
+
+template<typename R>
+typename TPlanarZPhaseSpace<R>::TDir TPlanarZPhaseSpace<R>::Dir(const TLoc& loc, const TV3& k) const
+	{
+	return TDir{ k[0],k[1] };
+	}
+	
+
+template<typename R>
+std::pair<bool, typename TPlanarZPhaseSpace<R>::TLoc> TPlanarZPhaseSpace<R>::LocIf(const TV3& r, const TV3& k) const
+	{
+	const Real dz = z0_ - r[2];
+	if (((dz != 0) && (k[2] == 0)) || (k[2] < 0))
+		return std::make_pair(false, TLoc{ std::numeric_limits<Real>::quiet_NaN(), std::numeric_limits<Real>::quiet_NaN() });
+	Real fac = dz / k[2];
+	TLoc rv;
+	rv.x0_ = r[0] + k[0] * fac;
+	rv.x1_ = r[1] + k[1] * fac;
+	return std::make_pair(true, rv);
+	}
+
+template<typename R>
+std::tuple<typename TPlanarZPhaseSpace<R>::TLoc, typename TPlanarZPhaseSpace<R>::TDir> TPlanarZPhaseSpace<R>::LocDir(const TV3& r, const TV3& k) const
+	{
+	TLoc loc = Loc(r, k);
+	return std::make_tuple(loc, Dir(loc, k));
+	}
+
+template<typename R>
+std::array<R, 4> TPlanarZPhaseSpace<R>::PhaseSpacePoint(const TV3& r, const TV3& k) const
+	{
+	TLoc loc = Loc(r, k);
+	TDir dir = Dir(loc, k);
+	return { loc.x0_, loc.x1_, dir.k0_, dir.k1_ };
+	}
+
+template<typename R>
+std::pair<bool, std::array<R, 4>> TPlanarZPhaseSpace<R>::PhaseSpacePointIf(const TV3& r, const TV3& k) const
+	{
+	auto locIf = LocIf(r, k);
+	if (locIf.first == false)
+		{
+		Real mynan = std::numeric_limits<Real>::quiet_nan();
+		return std::make_pair(false, std::array<Real, 4>{mynan, mynan, mynan, mynan});
+		}
+	TDir dir = Dir(locIf.second, k);
+	return std::make_pair(true, std::array<Real, 4>{locIf.second.x0_, locIf.second.x1_, dir.k0_, dir.k1_});
+	}
+
+template<typename R>
+typename TPlanarZPhaseSpace<R>::TV3 TPlanarZPhaseSpace<R>::Loc_to_V3(const TLoc& loc) const
+	{
+	return TV3{ loc.x0_, loc.x1_, z0_ };
+	}
+
+template<typename R>
+typename TPlanarZPhaseSpace<R>::TV3 TPlanarZPhaseSpace<R>::Dir_to_V3(const TLoc& loc, const TDir& dir) const
+	{
+	return TV3{ dir.k0_, dir.k1_, sqrt(1 - dir.k0_*dir.k0_ - dir.k1_*dir.k1_) };
+	}
+
+template<typename R>
+R TPlanarZPhaseSpace<R>::AreaScale(const TLoc& loc) const
+	{
+	return 1;
+	}
+
+
 
 #endif
 // include guard

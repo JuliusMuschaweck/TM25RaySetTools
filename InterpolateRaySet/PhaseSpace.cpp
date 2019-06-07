@@ -19,5 +19,5 @@
 		auto dir2 = ps2.Dir(loc2, dir3);
 		TVec3d dir3test = ps2.Dir_to_V3(loc2, dir2);
 
-
+		// use debugger to see if loc3test==loc3 and dir3test=dir3
 		};

@@ -5,6 +5,8 @@
 #include <vector>
 #include <limits>
 #include <stack>
+#include <random>
+#include <functional>
 // #include <mutex>
 // #include <atomic>
 
@@ -41,6 +43,7 @@ namespace KDTree
 
 	struct TNode
 		{
+		using TReal = Def::TReal;
 		// these two indices point into the TNodeArray member of TKDTree
 		Def::TIdxIdx beginpt_; // [beginpt_;endpt_) is the range of indices of points which belong to this node
 		Def::TIdxIdx endpt_; // if (endpt_ - beginpt_ == 1) then this node contains one point => leaf node
@@ -67,6 +70,8 @@ namespace KDTree
 		// returns list of points within sub-blocks. These points are all at center, except for the sub-block which contains pt
 		// rv has nPoints-1 center points and pt
 		std::vector<Def::TKDPoint> Partition(Def::TIdx nPoints, const Def::TKDPoint& pt) const;
+		std::vector<Def::TKDPoint> RandomPartition(Def::TIdx nPoints, const Def::TKDPoint & pt, const std::function<TReal()>& ranGen) const;
+
 		};
 
 	class TKDTree: public Def

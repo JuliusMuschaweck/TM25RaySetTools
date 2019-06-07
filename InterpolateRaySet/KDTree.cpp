@@ -6,8 +6,9 @@
 #include<random>
 #include<fstream>
 #include<chrono>
-
+#include"Timer.h"
 #include <iostream>
+
 
 namespace KDTree
 	{
@@ -27,18 +28,38 @@ namespace KDTree
 		{
 		Def::TReal big = std::numeric_limits<Def::TReal>::max();
 		// construct root node
-		nodes_.reserve(2 * pts_.size() - 1);
+//		std::cout << sizeof(TNode) << std::endl;
+//		std::cout << "reserving " << 2 * pts_.size() * sizeof(TNode) << " bytes of memory for nodes " << std::endl;
+		nodes_.reserve(2 * pts_.size()); // one more than needed
 		TNode root = RootNode();
 		TNodeIdx iRoot = AddNode(root);
 		PushWork(iRoot);
+		TTimer tim;
+		tim.tic();
+		int i = 0;
+		double elapsed = 0;
 		while (!work_.empty())
+			{
+			if ((++i) % 1000 == 0)
+				{
+				elapsed = tim.toc();
+				if (elapsed > 1)
+					{
+					tim.tic();
+					double frac = (1.0 * nodes_.size()) / ((2 * pts_.size() - 1));
+					std::cout << nodes_.size() << "/" << (2 * pts_.size() - 1) << "("<<round(frac*1000)/10<<"%)";
+					std::cout.flush();
+					}
+				}
 			SplitNext();
+			}
 		TIdxIdx ii{ 0 };
 		for (TPointIdx i : idx_)
 			{
 			ReverseIndex(i) = ii;
 			++(ii.ii_);
 			}
+		std::cout << " done\n";
 		}
 
 	void TKDTree::CheckConsistency() const
@@ -820,13 +841,20 @@ namespace KDTree
 		// rv has nPoints-1 center points and pt
 	std::vector<Def::TKDPoint> TNode::Partition(Def::TIdx nPoints, const Def::TKDPoint & pt) const
 		{
+		std::vector<Def::TKDPoint> rv;
+		if (nPoints == 0)
+			return rv;
 		if (!IsInBox({ corner0_,corner1_ }, pt))
 			throw std::runtime_error("TNode::Partition: pt not in bounding box");
+		if (nPoints == 1)
+			{
+			rv.push_back(pt);
+			return rv;
+			}
 		struct S { Def::TIdx has_n; size_t slice_dim;  Def::TKDPoint c0; Def::TKDPoint c1;};
 		std::stack<S> work;
 		size_t slicedim = 0;
 		work.push(S{ nPoints, slicedim, corner0_, corner1_ });
-		std::vector<Def::TKDPoint> rv;
 		bool ptTakenCareOf = false;
 		while (!(work.empty()))
 			{
@@ -858,6 +886,34 @@ namespace KDTree
 				work.push(lo);
 				work.push(hi);
 				}
+			}
+		return rv;
+		}
+
+
+	// #pragma optimize( "", off )
+	std::vector<Def::TKDPoint> TNode::RandomPartition(Def::TIdx nPoints, const Def::TKDPoint & pt, const std::function<Def::TReal()>& ranGen) const
+		{
+		std::vector<Def::TKDPoint> rv;
+		rv.reserve(nPoints);
+		if (nPoints == 0)
+			return rv;
+		if (!IsInBox({ corner0_,corner1_ }, pt))
+			throw std::runtime_error("TNode::Partition: pt not in bounding box");
+		if (nPoints == 1)
+			{
+			rv.push_back(pt);
+			return rv;
+			}
+		for (size_t i = 0; i < nPoints; ++i)
+			{
+			Def::TKDPoint thispt;
+			for (Def::TIdx j = 0; j < Def::dim; ++j)
+				{
+				Def::TReal random = ranGen();
+				thispt[j] = corner0_[j] * (1 - random) + corner1_[j] * random;
+				}
+			rv.push_back(thispt);
 			}
 		return rv;
 		}
