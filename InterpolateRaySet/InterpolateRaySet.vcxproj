@@ -72,15 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\InterpolateRaySet;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\InterpolateRaySet;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\InterpolateRaySet;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\InterpolateRaySet;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -184,6 +188,7 @@
     <ClInclude Include="CfgFile.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="PhaseSpace.h" />
+    <ClInclude Include="stdafx.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Tokenize.h" />
   </ItemGroup>

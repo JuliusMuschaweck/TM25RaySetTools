@@ -7,6 +7,8 @@ or http://unlicense.org/
 
 // TM25Util.h: Utility functions
 
+
+
 #ifndef __TM25Util_H
 #define __TM25Util_H
 #include <string>

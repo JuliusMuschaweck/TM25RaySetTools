@@ -55,6 +55,8 @@ TTokenSequence ReplaceVariable(const TTokenSequence& seq,
 	const std::string& name, const TTokenSequence& value);
 
 
+bool IsOneOf(const TToken& tok, std::vector<Token> toks);
+
 namespace TokenNS
 	{
 	using TSIt = TTokenSequence::const_iterator;

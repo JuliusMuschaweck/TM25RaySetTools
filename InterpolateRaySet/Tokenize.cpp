@@ -187,6 +187,11 @@ TTokenSequence ReplaceVariable(const TTokenSequence & seq, const std::string & n
 	return rv;
 	}
 
+bool IsOneOf(const TToken & tok, std::vector<Token> toks)
+	{
+	return (std::find(toks.begin(), toks.end(), std::get<Token>(tok)) != toks.end());
+	}
+
 std::string TestTokenize()
 	{
 	std::string s1 = "[](){};, \"stringwith'quote'\" 'stringwith\"doublequotes\"' =+-*/ horst _horst H0 10 10. 10.0 1e+1 1e+a";

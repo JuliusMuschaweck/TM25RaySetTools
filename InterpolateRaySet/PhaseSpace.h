@@ -99,6 +99,40 @@ class TPlanarZPhaseSpace
 	};
 
 
+// Phase space on infinite cylinder around the z axis
+// x0 is aligned with z, x1 in [- r pi, r pi], x1=0 at x axis 
+// for direction, k0 is aligned with z
+// AreaScale always returns 1
+template<typename R>
+class TCylinderZPhaseSpace
+	{
+	public:
+		using Real = R;
+		using TLoc = TLocR<Real>;
+		using TDir = TDirR<Real>;
+		using TV3 = TVec3<Real>;
+		TCylinderZPhaseSpace(Real radius = 1) : radius_(radius) {};
+		TLoc Loc(const TV3& r, const TV3& k) const;
+		TDir Dir(const TLoc& loc, const TV3& k) const;
+		std::pair<bool, TLoc> LocIf(const TV3& r, const TV3& k) const;
+		std::tuple<TLoc, TDir> LocDir(const TV3& r, const TV3& k) const;
+
+		std::array<Real, 4> PhaseSpacePoint(const TV3& r, const TV3& k) const;
+		std::pair<bool, std::array<Real, 4>> PhaseSpacePointIf(const TV3& r, const TV3& k) const;
+
+		TV3 Loc_to_V3(const TLoc& loc) const;
+		TV3 Dir_to_V3(const TLoc& loc, const TDir& dir) const;
+
+		Real AreaScale(const TLoc& loc) const;
+
+	private:
+		Real radius_;
+	};
+
+
+
+
+
 // Phase space on infinite plane, given by origin and the two e0, e1 axes
 // Construction ensures that e0 and e1 are orthogonal unit vectors (e1 is rotated if needed)
 // the two location coordinates are the e0 e1 components
@@ -135,7 +169,9 @@ class TPlanarPhaseSpace
 
 void TestPhaseSpace();
 
+// *******************************************************************
 // template definitions
+// *******************************************************************
 
 
 //template<typename R>
@@ -414,6 +450,130 @@ R TPlanarZPhaseSpace<R>::AreaScale(const TLoc& loc) const
 	}
 
 
+
+// **** TCylinderZPhaseSpace ***************
+//template<typename R>
+//class TCylinderZPhaseSpace::
+//	{
+//	public:
+//		using Real = R;
+//		using TLoc = TLocR<Real>;
+//		using TDir = TDirR<Real>;
+//		using TV3 = TVec3<Real>;
+//		TCylinderZPhaseSpace(Real radius = 1) : radius_(radius) {};
+
+template<typename R>
+typename TCylinderZPhaseSpace<R>::TLoc TCylinderZPhaseSpace<R>::Loc(const TV3& r, const TV3& k) const
+	{
+	// r + lambda * k has distance radius_ to z axis
+	auto sqr = [](R x) {return x * x; };
+	Real a = sqr(k[0]) + sqr(k[1]);
+	Real b = 2 * (k[0] * r[0] + k[1] * r[1]);
+	Real c = sqr(r[0]) + sqr(r[1]) - sqr(radius_);
+	Real D = sqr(b) - 4 * a * c;
+	if (D < 0)
+		throw std::runtime_error("TCylinderZPhaseSpace<R>::Loc: ray misses cylinder");
+	// + lambda, to get the intersection leaving the cylinder
+	Real lambda = (- b + sqrt(D)) / (2 * a);
+	TVec3f p = r + lambda * k;
+	Real alpha = atan2(p[1], p[0]);  // atan2(y,x) 
+	return TLoc{ p[2], alpha * radius_ };
+	}
+
+template<typename R>
+typename TCylinderZPhaseSpace<R>::TDir TCylinderZPhaseSpace<R>::Dir(const TLoc& loc, const TV3& k) const
+	{
+	// k coordinate system: (z,y,x) for alpha = 0
+	// k0 axis [0,0,1], k1 axis [-sin(alpha), cos(alpha), 0], k2 axis ][cos(alpha), sin(alpha), 0]
+	Real alpha = loc.x1_ / radius_;
+	Real sina = sin(alpha);
+	Real cosa = cos(alpha);
+	return TDir{ k[2], -sina * k[0] + cosa * k[1] }; 
+	// check: ray through sqrt(0.5) * radius * [1,1,0], alpha = 45°, k =[1,0,0] -> return [0, -sqrt(0.5)] 
+	}
+
+template<typename R>
+std::pair<bool, typename TCylinderZPhaseSpace<R>::TLoc> TCylinderZPhaseSpace<R>::LocIf(const TV3& r, const TV3& k) const
+	{
+	// r + lambda * k has distance radius_ to z axis
+	auto sqr = [](R x) {return x * x; };
+	Real a = sqr(k[0]) + sqr(k[1]);
+	Real b = 2 * (k[0] * r[0] + k[1] * r[1]);
+	Real c = sqr(r[0]) + sqr(r[1]) - sqr(radius_);
+	Real D = sqr(b) - 4 * a * c;
+	if (D < 0)
+		return std::make_pair(false, TLoc{ std::numeric_limits<Real>::quiet_NaN(), std::numeric_limits<Real>::quiet_NaN() });
+	// + lambda, to get the intersection leaving the cylinder
+	Real lambda = (-b + sqrt(D)) / (2 * a);
+	TVec3f p = r + lambda * k;
+	Real alpha = atan2(p[1], p[0]);  // atan2(y,x) 
+	return std::make_pair(true, TLoc{ p[2], alpha * radius_ });
+	}
+
+template<typename R>
+std::tuple<typename TCylinderZPhaseSpace<R>::TLoc, typename TCylinderZPhaseSpace<R>::TDir>
+TCylinderZPhaseSpace<R>::LocDir(const TV3& r, const TV3& k) const 
+	{
+	std::tuple<TLoc, TDir> rv;
+	std::get<0>(rv) = Loc(r, k);
+	std::get<1>(rv) = Dir(std::get<0>(rv), k);
+	return rv;
+	}
+
+template<typename R>
+std::array<typename R, 4>TCylinderZPhaseSpace<R>::PhaseSpacePoint(const TV3& r, const TV3& k) const
+	{
+	TLoc loc = Loc(r, k);
+	TDir dir = Dir(loc, k);
+	return { loc.x0_, loc.x1_, dir.k0_, dir.k1_ };
+	}
+
+template<typename R>
+std::pair<bool, std::array<typename R, 4>> TCylinderZPhaseSpace<R>::PhaseSpacePointIf(const TV3& r, const TV3& k) const
+	{
+	std::pair<bool, TLoc> locIf = LocIf(r, k);
+	if (std::get<bool>(locIf) == false)
+		{
+		float nan = std::numeric_limits<Real>::quiet_NaN();
+		return std::make_pair(false, std::array<Real, 4>{ nan, nan, nan, nan });
+		}
+	const TLoc& loc = std::get<TLoc>(locIf);
+	TDir dir = Dir(loc, k);
+	return std::make_pair(true, std::array<Real, 4>{ loc.x0_, loc.x1_, dir.k0_, dir.k1_ });
+	}
+
+template<typename R>
+typename TCylinderZPhaseSpace<R>::TV3 TCylinderZPhaseSpace<R>::Loc_to_V3(const TLoc& loc) const
+	{
+	Real alpha = loc.x1_ / radius_;
+	Real sina = sin(alpha);
+	Real cosa = cos(alpha);
+	TV3 rv{cosa * radius_, sina * radius_, loc.x0_};
+	return rv;
+	}
+
+template<typename R>
+typename TCylinderZPhaseSpace<R>::TV3 TCylinderZPhaseSpace<R>::Dir_to_V3(const TLoc& loc, const TDir& dir) const
+	{
+	auto sqr = [](R x) {return x * x; };
+	// k coordinate system: (z,y,x) for alpha = 0
+	// k0 axis [0,0,1], k1 axis [-sin(alpha), cos(alpha), 0], k2 axis ][cos(alpha), sin(alpha), 0]
+	Real alpha = loc.x1_ / radius_;
+	Real sina = sin(alpha);
+	Real cosa = cos(alpha);
+	Real _one_m_k0sqr_k1sqr = 1 - sqr(dir.k0_) - sqr(dir.k1_);
+	if (_one_m_k0sqr_k1sqr < 0)
+		_one_m_k0sqr_k1sqr = 0;
+	Real k2 = sqrt(_one_m_k0sqr_k1sqr);
+	return TV3{ -sina * dir.k1_ + cosa * k2, cosa * dir.k1_ + sina * k2, dir.k0_};
+	// check: alpha = 45°, dir = [-sqrt(0.5), 0] -> return [1,0,0]
+	}
+
+template<typename R>
+R TCylinderZPhaseSpace<R>::AreaScale(const TLoc& loc) const
+	{
+	return 1;
+	}
 
 #endif
 // include guard

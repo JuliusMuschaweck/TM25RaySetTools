@@ -1,4 +1,10 @@
+#ifndef _CONSOLE
+#include <stdafx.h>
+#endif
 #include "WriteFile.h"
+
+#undef min
+#undef max
 
 namespace TM25
 	{

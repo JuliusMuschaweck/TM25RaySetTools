@@ -118,6 +118,16 @@ class TSection
 		std::vector<TMultiValue> MultiValue(const std::string& n) const;
 		void SetMultiValue(const std::string& name, const TMultiValue& val);
 
+		// commands: the allowed command names for command(par1, par2, ...) entries
+		using TCommandArgs = std::vector<TTokenSequence>;
+		virtual void AddAllowedCommands() {}; // default none allowed
+		void AddAllowedCommand(const std::string& name);
+		bool ContainsCommand(const std::string& name) const;
+		
+		using TCommand = std::pair<std::string, TCommandArgs>;
+		using TCommandList = std::vector<TCommand>;
+		const TCommandList& CommandList() const;
+
 		virtual ~TSection() = default;
 	protected:
 		template<typename TRV, Token Tok>
@@ -131,10 +141,16 @@ class TSection
 		bool unknownKeywordsAllowed_ = false;
 		TKeywordSet keywords_;
 		std::string name_;
+		
 		using TValueSet = std::map<std::string, TTokenSequence>;
 		TValueSet values_;
+		
 		using TMultiValueSet = std::map<std::string, std::vector<TMultiValue>>;
 		TMultiValueSet multiValues_;
+
+		using TCommandSet = std::set<std::string>;
+		TCommandSet allowedCommands_;
+		TCommandList commandList_;
 	};
 
 class TConfiguration

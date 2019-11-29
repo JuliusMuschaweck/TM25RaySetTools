@@ -175,6 +175,7 @@
     <ClInclude Include="..\TM25ReadWrite\TM25_impl.h" />
     <ClInclude Include="..\TM25ReadWrite\WriteFile.h" />
     <ClInclude Include="ReadASAPRaySet.h" />
+    <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

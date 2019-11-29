@@ -7,6 +7,9 @@ or http://unlicense.org/
 
 // implementation of TM25Util.h
 
+#ifndef _CONSOLE
+#include <stdafx.h>
+#endif
 #include "TM25Util.h"
 #include <vector>
 namespace TM25

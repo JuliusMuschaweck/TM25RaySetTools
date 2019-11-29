@@ -150,10 +150,11 @@ namespace TM25
 		};
 	
 
-	template<typename TRayArray> 
+	template<typename RayArray> 
 	class TBasicTM25RaySet
 		{
 		public:
+			using TRayArray = typename RayArray;
 			TBasicTM25RaySet();
 			TBasicTM25RaySet(const TTM25Header& h, const TRayArray& r);
 			TBasicTM25RaySet(const TTM25Header& h, TRayArray&& r);

@@ -4,6 +4,10 @@ under the Unlicense, see unlicense.txt in the repository
 or http://unlicense.org/
 2019-01-19
 ******************************************************************/
+#ifndef _CONSOLE
+#include <stdafx.h>
+#endif#undef min
+#undef max
 
 #include"TM25.h"
 #include <stdexcept>

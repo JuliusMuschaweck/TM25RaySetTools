@@ -259,6 +259,20 @@ void TSection::SetMultiValue(const std::string & name, const TMultiValue & val)
 	it->second.push_back(val);
 	}
 
+void TSection::AddAllowedCommand(const std::string & name)
+	{
+	allowedCommands_.insert(name);
+	}
+
+bool TSection::ContainsCommand(const std::string & name) const
+	{
+	return allowedCommands_.find(name) != allowedCommands_.end();
+	}
+
+const TSection::TCommandList & TSection::CommandList() const
+	{
+	return commandList_;
+	}
 
 
 void TSection::ParseLine(const TTokenSequence& t, size_t currentLine, const std::string& fn, const TSection& variables)
@@ -288,7 +302,6 @@ void TSection::ParseLine(const TTokenSequence& t, size_t currentLine, const std:
 			" at position " + std::to_string(std::get<size_t>(*found)) + "of line "
 			+ std::to_string(currentLine) + " in section " + this->name_);
 		};
-
 
 	cur = AdvanceToken(cur, end);
 	if (std::get<Token>(*cur) == Token::equals) // value assignment
@@ -321,7 +334,45 @@ void TSection::ParseLine(const TTokenSequence& t, size_t currentLine, const std:
 			throw std::runtime_error("TSection::ParseLine: unknown value name " + n + "in line # "
 			+ std::to_string(currentLine) + " in section " + this->name_
 			+ " of file " + fn);
+		return;
 		}
+	if (std::get<Token>(*cur) == Token::lParen) // command
+		{
+		if (ContainsCommand(n) || unknownValuesAllowed_)
+			{
+			TCommandArgs args;
+			cur = AdvanceToken(cur, end);
+			while (!IsOneOf(*cur, { Token::rParen, Token::endofline }))
+				{
+				TTokenSequence arg;
+				while (!IsOneOf(*cur, { Token::comma, Token::rParen, Token::endofline }))
+					{
+					arg.push_back(*cur);
+					cur = AdvanceToken(cur, end);
+					}
+				args.push_back(arg);
+				if (std::get<Token>(*cur) == Token::comma)
+					{
+					cur = AdvanceToken(cur, end);
+					continue;
+					}
+				break;
+				}
+			AssertToken(Token::rParen, cur);
+			cur = AdvanceToken(cur, end);
+			commandList_.push_back(std::make_pair(n, args));
+			}
+		else
+			{
+			throw std::runtime_error("TSection::ParseLine: unknown command name " + n + "in line # "
+				+ std::to_string(currentLine) + " in section " + this->name_
+				+ " of file " + fn);
+			}
+		return;
+		}
+	throw std::runtime_error("TSection::ParseLine: syntax error after " + n + "in line # "
+		+ std::to_string(currentLine) + " in section " + this->name_
+		+ " of file " + fn);
 	};
 
 

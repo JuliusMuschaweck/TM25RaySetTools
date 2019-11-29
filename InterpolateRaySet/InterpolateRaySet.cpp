@@ -9,6 +9,7 @@
 #include <numeric>
 #include <memory>
 #include "CfgFile.h"
+#include "../TM25ReadWrite/WriteFile.h"
 
 int Test()
 	{
@@ -57,19 +58,28 @@ class TRaySetControlSection : public TSection
 			values_.insert({ "selectByMaxNumber",	MakeEmptyTokenSequence()});
 			values_.insert({ "doDiagnostics",		MakeDefaultValueTokenSequence<Token::boolean>(true) });
 			values_.insert({ "restrictToRelVirtualFocusDistance",MakeEmptyTokenSequence() });
-			values_.insert({ "restrictToKz",		MakeDefaultValueTokenSequence<Token::real>(0.05) });
+			values_.insert({ "restrictToKz",		MakeEmptyTokenSequence() });
 			values_.insert({ "nOutputRays",			MakeDefaultValueTokenSequence<Token::integer>(1) });
 			values_.insert({ "nNeighbors",			MakeDefaultValueTokenSequence<Token::integer>(10) });
 			values_.insert({ "outputRayFileName",	MakeDefaultValueTokenSequence<Token::string>(std::string("tmp.TM25RAY")) });
 			values_.insert({ "phaseSpaceType",		MakeDefaultValueTokenSequence<Token::identifier>(std::string("VirtualFocusZSphere")) });
 			values_.insert({ "ZPlane_z",			MakeDefaultValueTokenSequence<Token::real>(0.0) });			
-			
+			values_.insert({ "ZCylinderRadius",		MakeDefaultValueTokenSequence<Token::real>(1.0) });
+			values_.insert({ "characteristicCurveFileName",	MakeEmptyTokenSequence() });
+			values_.insert({ "skewness_z_FileName",	MakeEmptyTokenSequence() });
+			values_.insert({ "skewness_nBins",	MakeDefaultValueTokenSequence<Token::integer>(100) });
+			values_.insert({ "skewness_binType",	MakeDefaultValueTokenSequence<Token::identifier>(std::string("sameSkewness")) });
+			values_.insert({ "setTotalFlux",		MakeEmptyTokenSequence() });
 			}
 		virtual void AddAllowedKeywords() 
 			{
 			keywords_.insert("VirtualFocusZSphere");
 			keywords_.insert("ZPlane");
+			keywords_.insert("ZCylinder");
 
+			keywords_.insert("sameSkewness");
+			keywords_.insert("sameEtendue");
+			keywords_.insert("sameFlux");
 			}; // default: empty
 
 	};
@@ -166,6 +176,7 @@ struct TInterpolateRaySetData
 	{
 		template<typename PhaseSpace>
 		void Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, TLogPlusCout& info);
+		void SetTotalFlux(float newTotalFlux);
 		std::unique_ptr<KDTree::TKDTree> kdtree_;
 		std::vector<float> rayFluxes_;
 		std::vector<float> volumes_;
@@ -174,6 +185,35 @@ struct TInterpolateRaySetData
 		float totalVolume_;
 		float totalFlux_;
 		float avgLuminance_;
+		
+		// sort cells according to luminance, result is the characteristic curve
+		struct TCharacteristicCurve // see doi:10.1117/12.615874, "Characterization of the thermodynamic quality of light sources"
+			{
+			std::vector<float> etendue_;
+			std::vector<float> luminance_;
+			};
+		TCharacteristicCurve CharacteristicCurve() const; 
+		//format: 8 byte int for nCells, 2 by n matrix of 4 byte floats, row major, first row is etendue, second row is luminance.
+		void WriteCharacteristicCurve(const std::string& fn, const TCharacteristicCurve& cc);
+		
+		// compute the skewness distribution of etendue and flux, w.r.t. a certain axis of rotational symmetry
+		// put cells into bins of equal size, choose quantity of which equal size is desired
+		struct TSkewnessDistribution // see doi:10.1364/JOSAA.14.002855 "Performance limitations of rotationally symmetric nonimaging devices"
+			{
+			TVec3f axis_point_;
+			TVec3f axis_direction_;
+			enum class BinType {sameSkewness, sameEtendue, sameFlux};
+			std::vector<float> skewness_; // nBins + 1: limits of intervals for bar graph. Compute mean of adjacent value pairs to obtain nBins values for easy plotting
+			std::vector<float> dU_ds_; // nBins
+			std::vector<float> dPhi_ds_; // nBins
+			};
+		TSkewnessDistribution::BinType BinTypeFromString(std::string s) const;
+		TSkewnessDistribution SkewnessDistribution_z_axis(size_t nBins, TSkewnessDistribution::BinType binType, const TM25::TTM25RaySet& rs) const;
+		TSkewnessDistribution SkewnessDistribution(TVec3f axis_point, TVec3f axis_direction, size_t nBins, TSkewnessDistribution::BinType binType, const TM25::TTM25RaySet& rs) const;
+		//format: 4 byte floats, 3 floats for point, 3 floats for direction,  4 byte int for nBins
+		// nBins+1 (!!) floats for skewness, nBins floats for dU_ds, nBins floats for dPhi_ds
+		void WriteSkewnessDistribution_z_axis(const std::string& fn, const TSkewnessDistribution& cc);
+
 	private:
 		template<typename PhaseSpace>
 		void CreateTree(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, std::ostream& info);
@@ -209,6 +249,186 @@ void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet&
 	avgLuminance_ = totalFlux_ / totalVolume_;
 	}
 
+void TInterpolateRaySetData::SetTotalFlux(float newTotalFlux)
+	{
+	double fac = newTotalFlux / totalFlux_;
+	for (auto& f : rayFluxes_)
+		f *= fac;
+	for (auto& l : luminances_)
+		l *= fac;
+	for (auto& c : cellFluxes_)
+		c *= fac;
+	}
+
+// sort v, but return index of permutation instead of modifying v
+// postcondition: i < j => v[rv[i]] <= v[rv[j]]
+template<typename Compare = decltype(std::less())>
+std::vector<size_t> IndexSort(const std::vector<float>& v, Compare comp = std::less())
+	{
+	std::vector<size_t> rv(v.size());
+	std::iota(rv.begin(), rv.end(), 0);
+	auto pred = [&v, comp](size_t lhs, size_t rhs) -> bool {return comp(v[lhs], v[rhs]); };
+	std::sort(rv.begin(), rv.end(), pred);
+	return rv;
+	}
+
+#ifdef NDEBUG
+#pragma optimize("",off)
+#endif
+TInterpolateRaySetData::TCharacteristicCurve TInterpolateRaySetData::CharacteristicCurve() const
+	{
+	// sort descending
+	std::vector<size_t> idx = IndexSort(luminances_, std::greater());
+	TCharacteristicCurve rv;
+	size_t nCells = idx.size();
+	rv.etendue_.reserve(nCells);
+	rv.luminance_.reserve(nCells);
+	for (size_t i : idx)
+		{
+		rv.etendue_.push_back(volumes_[i]);
+		rv.luminance_.push_back(luminances_[i]);
+		}
+	return rv;
+	}
+
+void TInterpolateRaySetData::WriteCharacteristicCurve(const std::string& fn, const TCharacteristicCurve& cc)
+	{
+	TM25::TWriteFile f(fn);
+	f.Write<uint64_t>(static_cast<uint64_t>(cc.etendue_.size()));
+	f.WriteVector(cc.etendue_);
+	f.WriteVector(cc.luminance_);
+	}
+
+// helper function for skewness distribution. 
+// precondition: v ascending (not checked!), v.size() >= nBins + 1, nBins > 0
+// returns nBins + 1 indices into v such that the half open intervals have approx. same width in v
+// rv starts with 0, ends with v.size()-1, strictly ascending (no empty bins)
+// more precisely: Given bin size: d = (v.back()-v.front())/nBins.
+// for any i such that 0 < i <= nBins, v[rv[i]] is the smallest/first element in v such that v[rv[i]] >= i * d
+// except if we run out of remaining values in v, then they come one by one
+std::vector<size_t> BinIndices(const std::vector<float>& v, size_t nBins)
+	{
+	if (nBins == 0)
+		throw std::runtime_error("BinIndices: nBins == 0");
+	size_t nv = v.size();
+	if (nv < nBins + 1)
+		throw std::runtime_error("BinIndices: too many bins / too few values");
+	if (nBins == 1)
+		return std::vector<size_t> {0, nv};
+	std::vector<size_t> rv;
+	rv.push_back(0);
+	double d = (v.back() - v.front()) / nBins;
+	size_t vpos = 0;
+	for (size_t i = 1; i < nBins; ++i)
+		{
+		double nextBoundary = i * d;
+		++vpos; // advance at least one
+		while (v[vpos] < nextBoundary)
+			{
+			size_t remain_v = nv - vpos;
+			size_t remain_rv = nBins + 1 - i;
+			if (remain_v <= remain_rv)
+				break;
+			++vpos;
+			}
+		rv.push_back(vpos);
+		}
+	rv.push_back(nv-1);
+	return rv;
+	}
+
+TInterpolateRaySetData::TSkewnessDistribution::BinType TInterpolateRaySetData::BinTypeFromString(std::string s) const
+	{
+	if (s == "sameSkewness")
+		return TSkewnessDistribution::BinType::sameSkewness;
+	if (s == "sameEtendue")
+		return TSkewnessDistribution::BinType::sameEtendue;
+	if (s == "sameFlux")
+		return TSkewnessDistribution::BinType::sameFlux;
+	throw std::runtime_error("TInterpolateRaySetData::BinTypeFromString: unknown bin type: "+ s);
+	}
+
+TInterpolateRaySetData::TSkewnessDistribution TInterpolateRaySetData::SkewnessDistribution_z_axis(size_t nBins, TSkewnessDistribution::BinType binType, const TM25::TTM25RaySet& rs) const
+	{// ray r + lambda * u, skewness s = n r dot (u cross e_z), here n = 1
+	auto s = [](const TVec3f& r, const TVec3f& u) {return r[0] * u[1] - r[1] * u[0]; };
+	size_t nRays = rs.NRays();
+	std::vector<float> raw_skewness;
+	raw_skewness.reserve(nRays);
+	for (size_t i = 0; i < nRays; ++i)
+		{
+		std::tuple<TVec3f, TVec3f, float> iray = rs.RayLocDirFlux(i);
+		raw_skewness.push_back(s(std::get<0>(iray), std::get<1>(iray)));
+		}
+	std::vector<size_t> s_idx = IndexSort(raw_skewness);
+	std::vector<float> sorted_skewness;
+	sorted_skewness.reserve(nRays);
+	for (size_t i : s_idx)
+		{
+		sorted_skewness.push_back(raw_skewness[i]);
+		}
+	{ // free memory: clear won't do it! swap with empty .. 
+		std::vector<float> empty;
+		raw_skewness.swap(empty);
+	}  // empty goes out of scope and is destroyed
+	double acc_etendue = 0;
+	double acc_flux = 0;
+	std::vector<float> accumulated_sorted_etendue;
+	accumulated_sorted_etendue.reserve(nRays);
+	std::vector<float> accumulated_sorted_flux;
+	accumulated_sorted_flux.reserve(nRays);
+	for (size_t i : s_idx)
+			{
+		accumulated_sorted_etendue.push_back(acc_etendue += volumes_[i]);
+		accumulated_sorted_flux.push_back(acc_flux += rayFluxes_[i]);
+		}
+	// now we have three arrays: sorted_skewness, accumulated_sorted_etendue, accumulated_sorted_flux.
+	std::vector<size_t> bin_idx;
+	switch (binType)
+		{
+			case TSkewnessDistribution::BinType::sameSkewness: 
+				bin_idx = BinIndices(sorted_skewness, nBins); break;
+			case TSkewnessDistribution::BinType::sameEtendue:
+				bin_idx = BinIndices(accumulated_sorted_etendue, nBins); break;
+			case TSkewnessDistribution::BinType::sameFlux:
+				bin_idx = BinIndices(accumulated_sorted_flux, nBins); break;
+			default:
+				throw std::runtime_error("TInterpolateRaySetData::SkewnessDistribution_z_axis: unknown bin type");
+		}
+	TInterpolateRaySetData::TSkewnessDistribution rv;
+	rv.axis_direction_ = TVec3f{ 0,0,1 };
+	rv.axis_point_ = TVec3f{ 0,0,0 };
+	for (size_t i = 0; i <= nBins; ++i)
+		rv.skewness_.push_back(sorted_skewness[bin_idx[i]]);
+	for (size_t i = 0; i < nBins; ++i)
+		{
+		float dU = accumulated_sorted_etendue[bin_idx[i + 1]] - accumulated_sorted_etendue[bin_idx[i]];
+		float dPhi = accumulated_sorted_flux[bin_idx[i + 1]] - accumulated_sorted_flux[bin_idx[i]];
+		float ds = sorted_skewness[bin_idx[i + 1]] - sorted_skewness[bin_idx[i]];
+		rv.dU_ds_.push_back(dU / ds);
+		rv.dPhi_ds_.push_back(dPhi / ds);
+		}
+	return rv;
+	}
+
+//format: 4 byte floats, 3 floats for point, 3 floats for direction,  4 byte int for nBins
+		// nBins+1 (!!) floats for skewness, nBins floats for dU_ds, nBins floats for dPhi_ds
+void TInterpolateRaySetData::WriteSkewnessDistribution_z_axis(const std::string& fn, const TSkewnessDistribution& cc)
+	{
+	TM25::TWriteFile f(fn);
+	f.WriteArray(cc.axis_point_);
+	f.WriteArray(cc.axis_direction_);
+	uint32_t nBins = static_cast<uint32_t>(cc.skewness_.size() - 1);
+	f.Write(nBins);
+	f.WriteVector(cc.skewness_);
+	f.WriteVector(cc.dU_ds_);
+	f.WriteVector(cc.dPhi_ds_);
+	}
+
+#ifdef NDEBUG
+#pragma optimize("",on)
+#endif
+
+
 template<typename PhaseSpace>
 void TInterpolateRaySetData::CreateTree(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, std::ostream& info)
 	{
@@ -231,6 +451,8 @@ void TInterpolateRaySetData::CreateTree(const PhaseSpace& ps, const TM25::TTM25R
 	info << "checking tree consistency\n";
 	kdtree_->CheckConsistency();
 	}
+
+
 
 template<typename PhaseSpace>
 TM25::TDefaultRayArray ComputeRayArray(PhaseSpace ps, const KDTree::Def::TKDPoints& interpolatedPsPoints, const std::vector<float>& interpolatedFluxes)
@@ -260,7 +482,7 @@ int main(int argc, char *argv[])
 	try
 		{
 		//return Test();
-		Test();
+		// Test();
 		std::string cfgFn{ argv[1] };
 		cout << "parsing configuration file " << cfgFn << endl;
 		TInterpolateRaySetCfg cfg;
@@ -317,7 +539,32 @@ int main(int argc, char *argv[])
 			TPlanarZPhaseSpace<float> ps(static_cast<float>(z0));
 			interpRaySetData.Init(ps, rs, rsc.Int("nNeighbors"), logS);
 			}
+		else if (pstype.compare("ZCylinder") == 0)
+			{
+			double radius = rsc.Real("ZCylinderRadius");
+			TCylinderZPhaseSpace<float> ps(static_cast<float>(radius));
+			interpRaySetData.Init(ps, rs, rsc.Int("nNeighbors"), logS);
+			}
+		else
+			throw std::runtime_error("InterpolateRaySet: no valid phase space type");
+		if (!rsc.IsEmpty("setTotalFlux"))
+			interpRaySetData.SetTotalFlux(rsc.Real("setTotalFlux"));
+
 		size_t nRays = rs.NRays();
+
+		if (!rsc.IsEmpty("characteristicCurveFileName"))
+			interpRaySetData.WriteCharacteristicCurve(rsc.String("characteristicCurveFileName"),
+			interpRaySetData.CharacteristicCurve());
+		if (!rsc.IsEmpty("skewness_z_FileName"))
+			{
+			size_t nBins = rsc.Int("skewness_nBins");
+			std::string fn = rsc.String("skewness_z_FileName");
+			std::string bts = rsc.Keyword("skewness_binType");
+			TInterpolateRaySetData::TSkewnessDistribution::BinType binType = interpRaySetData.BinTypeFromString(bts);
+			TInterpolateRaySetData::TSkewnessDistribution sd = interpRaySetData.SkewnessDistribution_z_axis(nBins, binType, rs);
+			interpRaySetData.WriteSkewnessDistribution_z_axis(fn, sd);
+			}
+
 
 		// now we have an array of rays, a corresponding array of points in phase space, and corresponding arrays of volumes, fluxes and luminances. 
 		// we also have the KD tree structure which gives us a phase space bounding box for each ray.
@@ -365,7 +612,7 @@ int main(int argc, char *argv[])
 			//std::vector<KDTree::Def::TKDPoint> newPsPoints = thisNode.Partition(thisNoOfRays, thisPsPoint);
 			std::vector<KDTree::Def::TKDPoint> newPsPoints = thisNode.RandomPartition(thisNoOfRays, thisPsPoint, ranGen);
 			auto sqr = [](double x) {return x * x; };
-			const double kzmin2 = sqr(rsc.Real("restrictToKz"));
+			const double kzmin2 = 0.005; // sqr(rsc.Real("restrictToKz"));
 			for (auto& npsp : newPsPoints)
 				{
 				// disregard rays with k0^2+k1^2>1
@@ -390,6 +637,14 @@ int main(int argc, char *argv[])
 			TPlanarZPhaseSpace<float> ps(static_cast<float>(z0));
 			rayArray = ComputeRayArray(ps, interpolatedPsPoints, interpolatedFluxes);
 			}
+		else if (pstype.compare("ZCylinder") == 0)
+			{
+			double radius = rsc.Real("ZCylinderRadius");
+			TCylinderZPhaseSpace<float> ps(static_cast<float>(radius));
+			rayArray = ComputeRayArray(ps, interpolatedPsPoints, interpolatedFluxes);
+			}
+		else
+			throw std::runtime_error("InterpolateRaySet: no valid pahse space type");
 
 		TM25::TTM25Header header = rs.Header();
 		header.n_rays_4_7_1_6 = rayArray.NRays();

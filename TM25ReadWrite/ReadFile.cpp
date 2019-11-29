@@ -6,8 +6,11 @@ or http://unlicense.org/
 ******************************************************************/
 // implementation of non-template functions of ReadFile.h
 
+#ifndef _CONSOLE
+	#include <stdafx.h>
+#endif
 #include "ReadFile.h"
-#include<cstring> // for memcpy
+#include <cstring> // for memcpy
 #include <sys/stat.h>
 
 namespace TM25
