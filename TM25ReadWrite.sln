@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.271
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29519.87
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TM25ReadWrite", "TM25ReadWrite\TM25ReadWrite.vcxproj", "{C1B234E2-237D-41C9-A16E-38290B39FAEC}"
 EndProject
@@ -10,8 +10,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InterpolateRaySet", "InterpolateRaySet\InterpolateRaySet.vcxproj", "{029385D9-D291-404B-ADB0-54DFB779747E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConvertASAPToTM25", "ConvertASAPToTM25\ConvertASAPToTM25.vcxproj", "{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JMORaySetConsole", "JMORaySetConsole\JMORaySetConsole.vcxproj", "{01829E6C-196F-4ED6-834F-39D8BF1A8F48}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,14 +51,6 @@ Global
 		{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}.Release|x64.Build.0 = Release|x64
 		{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}.Release|x86.ActiveCfg = Release|Win32
 		{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}.Release|x86.Build.0 = Release|Win32
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Debug|x64.ActiveCfg = Debug|x64
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Debug|x64.Build.0 = Debug|x64
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Debug|x86.ActiveCfg = Debug|Win32
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Debug|x86.Build.0 = Debug|Win32
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Release|x64.ActiveCfg = Release|x64
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Release|x64.Build.0 = Release|x64
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Release|x86.ActiveCfg = Release|Win32
-		{01829E6C-196F-4ED6-834F-39D8BF1A8F48}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
