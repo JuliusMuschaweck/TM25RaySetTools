@@ -39,6 +39,9 @@ int main(int argc, char *argv[])
 	std::cout << fn << '\n';
 	if (argc != 3)
 		{
+		std::string fn = ReadFN();
+		std::cout << fn << '\n';
+		TODO: check for "xx.dis", then write tto "xx.tm25ray"
 		std::cout << "ConvertASAPToTM25: call me ConvertASAPToTM25 <ASAP DIS file> <TM25 file>";
 		return 1;
 		}
