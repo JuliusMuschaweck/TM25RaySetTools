@@ -89,7 +89,7 @@ namespace TM25
 
 	struct TSpectralTable
 		{
-		int idx_ = 0; // base 1, not 0, see 4.7.4 -- default value 0 = invalid
+		int idx_; // base 1, not 0, see 4.7.4
 		std::vector<float> lambda_;
 		std::vector<float> weight_;
 		};

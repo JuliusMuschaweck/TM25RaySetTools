@@ -8,8 +8,6 @@
 #include <vector> 
 #include "../InterpolateRaySet/KDTree.h"
 
-void TestBroyden();
-
 void TestBuf()
 	{
 	//std::ifstream f("..\\rayfile_LERTDUW_S2WP_20161017_IES_TM25.zip", std::ios::binary);
@@ -23,7 +21,6 @@ void TestBuf()
 
 int main()
 {
-	TestBroyden();
     std::cout << "Hello World!\n"; 
 	if (KDTree::Def::dim == 2)
 		KDTree::TestKDTree2D("TestKDTree.m");

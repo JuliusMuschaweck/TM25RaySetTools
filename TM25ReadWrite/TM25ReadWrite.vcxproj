@@ -19,7 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="playground.cpp" />
     <ClCompile Include="ReadFile.cpp" />
     <ClCompile Include="TestLinAlg.cpp" />
     <ClCompile Include="TM25.cpp" />
@@ -28,7 +27,6 @@
     <ClCompile Include="WriteFile.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="playground.h" />
     <ClInclude Include="ReadFile.h" />
     <ClInclude Include="TM25.h" />
     <ClInclude Include="TM25Util.h" />
