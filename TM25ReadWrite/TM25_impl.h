@@ -10,6 +10,7 @@ or http://unlicense.org/
 
 #include "TM25Util.h"
 #include <sstream>
+#include <algorithm>
 #include "TM25.h"
 namespace TM25
 	{

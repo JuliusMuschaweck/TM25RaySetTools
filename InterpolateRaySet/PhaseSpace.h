@@ -4,6 +4,7 @@
 #include "..\TM25ReadWrite\LinAlg3.h"
 #include <tuple>
 #include <limits>
+#include <stdexcept>
 
 template<typename R>
 struct TLocR

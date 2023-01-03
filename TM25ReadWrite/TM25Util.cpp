@@ -12,6 +12,7 @@ or http://unlicense.org/
 #endif
 #include "TM25Util.h"
 #include <vector>
+#include <locale>
 namespace TM25
 	{
 
