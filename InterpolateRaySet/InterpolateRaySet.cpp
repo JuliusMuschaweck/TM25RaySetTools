@@ -15,6 +15,7 @@
 #ifdef MULTITHREAD
 #include<thread>
 #include<future>
+#include<mutex>
 #endif
 
 int Test()
@@ -141,6 +142,19 @@ class ComposeStream : public std::ostream
 			}
 	};
 
+class TThreadSafe_stdcout
+	{
+	public:
+		template<typename T>
+		void Write(const T& t)
+			{
+			std::lock_guard<std::mutex> lock(m_);
+			std::cout << t;
+			}
+	private:
+		std::mutex m_;
+	};
+
 class TLogPlusCout : public ComposeStream
 	{
 	public:
@@ -163,7 +177,6 @@ class TLogPlusCout : public ComposeStream
 	private:
 		std::unique_ptr<std::ofstream> log_;
 	};
-
 
 TZAxisStereographicSphericalPhaseSpace<float> CreateZAxisSphericalPhaseSpace(const TM25::TTM25RaySet& rs)
 	{
@@ -191,6 +204,7 @@ struct TInterpolateRaySetData
 	float totalVolume_;
 	float totalFlux_;
 	float avgLuminance_;
+	mutable TThreadSafe_stdcout safeout_;
 
 	// sort cells according to luminance, result is the characteristic curve
 	struct TCharacteristicCurve // see doi:10.1117/12.615874, "Characterization of the thermodynamic quality of light sources"
@@ -233,34 +247,53 @@ TInterpolateRaySetData::TThreeVecs TInterpolateRaySetData::ComputeLumRange(size_
 	TVec luminances = TVec(iend - ibegin);
 	TVec volumes = TVec(iend - ibegin);
 	TVec cellFluxes = TVec(iend - ibegin);
+	std::stringstream s;
+	if (ibegin == 0)
+		{
+		s << "ComputeLumRange(" << ibegin << ", " << iend << ")\n";
+		safeout_.Write(s.str());
+		};
 	for (size_t i = ibegin; i < iend; ++i)
 		{
-		KDTree::TKDTree::TPointIdx pi{ static_cast<KDTree::Def::TIdx>(i) };
-		KDTree::TKDTree::TNearestNeighbors inbs = kdtree_->NearestNeighborsOfPoint(pi, nNeighbors);
+		if (ibegin == 0)
+			{
+			size_t nraysPercent = (iend > 100) ? (iend / 100) : 1;
+			if ((iend > 100) && (i % nraysPercent == 0))
+				{
+				s.str("");
+				s << round(double(i) / iend * 100.0) << "% ";
+				safeout_.Write(s.str());
+				}
+			}
+		const KDTree::TKDTree::TPointIdx pi{ static_cast<KDTree::Def::TIdx>(i) };
+		const KDTree::TKDTree::TNearestNeighbors inbs = kdtree_->NearestNeighborsOfPoint(pi, nNeighbors);
 		// compute total volume and avg luminance of neighbors -- no write except local
-		float vol = kdtree_->TotalVolume(inbs.i_nodes_);
+		const float vol = kdtree_->TotalVolume(inbs.i_nodes_);
 		float flux = 0;
 		for (auto &ii : inbs.i_points_)
 			flux += rayFluxes_[ii.pi_];
-		float avgLuminance = flux / vol;
+		const float avgLuminance = flux / vol;
 		// write out luminances, volumes and cellFluxes -- RACE DANGER
 		luminances[i - ibegin] = avgLuminance;
-		KDTree::TKDTree::TNodeIdx ni = kdtree_->NodeIndex(pi);
-		float iVolume = (kdtree_->Node(ni)).Volume();
+		const KDTree::TKDTree::TNodeIdx ni = kdtree_->NodeIndex(pi);
+		const float iVolume = (kdtree_->Node(ni)).Volume();
 		volumes[i - ibegin] = iVolume;
 		cellFluxes[i - ibegin] = (iVolume * avgLuminance);
 		}
+	s.str("");
+	s << "ComputeLumRange(" << ibegin << ", " << iend << ") done\n";
+	safeout_.Write(s.str());
 	return TThreeVecs(std::move(luminances), std::move(volumes), std::move(cellFluxes));
 	}
 
 
 template<typename PhaseSpace>
 void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, TLogPlusCout& info)
-	{
+	{ 
 	CreateTree(ps, rs, info);
 	info << "averaging luminance over " << nNeighbors << " nearest neighbors\n ";
 	size_t nRays = rs.NRays();
-	bool multithreaded = false; // DO NOT Change, multithreaded is buggy
+	bool multithreaded = true; // DO NOT Change, multithreaded is buggy
 	if (multithreaded)
 		{
 		size_t min_chunkSize = 1000;
@@ -286,7 +319,8 @@ void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet&
 			for (size_t i = 0; i < nThreads - 1; ++i)
 				{
 				iend = ibegin + chunkSize;
-				futures[i] = std::async(std::launch::async, [&]() -> TThreeVecs {return this->ComputeLumRange(ibegin, iend, nNeighbors); });
+				//				futures[i] = std::async(std::launch::async, [&]() -> TThreeVecs {return this->ComputeLumRange(ibegin, iend, nNeighbors); });
+				futures[i] = std::async(std::launch::async, &TInterpolateRaySetData::ComputeLumRange, this, ibegin, iend, nNeighbors);
 				ibegin = iend;
 				}
 			TThreeVecs lastRes = ComputeLumRange(ibegin, nRays, nNeighbors);
@@ -302,7 +336,7 @@ void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet&
 				const TVec& ivol = std::get<1>(resi);
 				const TVec& iflux = std::get<2>(resi);
 				size_t iend = ibegin + chunkSize;
-				info << "thread " << i << ", ibegin = " << ibegin << "\n";
+				info << " from thread " << i << ", ibegin = " << ibegin << "\n";
 				std::copy(ilum.begin(), ilum.end(), luminances_.begin() + ibegin);
 				std::copy(ivol.begin(), ivol.end(), volumes_.begin() + ibegin);
 				std::copy(iflux.begin(), iflux.end(), cellFluxes_.begin() + ibegin);
