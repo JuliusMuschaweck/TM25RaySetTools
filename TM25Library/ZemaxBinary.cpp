@@ -95,6 +95,31 @@ float TZemaxRaySet::Wavelength() const
 	return wavelength_;
 	}
 
+float TZemaxRaySet::MinWavelength() const
+	{
+	float rv = std::numeric_limits<float>::max();
+	for (size_t i = 0; i < NRays(); ++i)
+		{
+		float tmp = data_[i*8+7];
+		if (tmp < rv)
+			rv = tmp;
+		}
+	return rv;
+	}
+
+float TZemaxRaySet::MaxWavelength() const
+	{
+	float rv = std::numeric_limits<float>::min();
+	for (size_t i = 0; i < NRays(); ++i)
+		{
+		float tmp = data_[i * 8 + 7];
+		if (tmp > rv)
+			rv = tmp;
+		}
+	return rv;
+	}
+
+
 TZemaxHeader TZemaxRaySet::Header() const
 	{
 	return header_;
@@ -199,6 +224,8 @@ void TZemaxRaySet::Write(const std::string& filename) const
 	try
 		{
 		TM25::TWriteFile f(filename);
+		if (sizeof(TZemaxHeader) != 208)
+			throw std::logic_error("TZemaxRaySet::Write: sizeof(TZemaxheader) != 208");
 		f.Write<TZemaxHeader>(header_);
 		size_t nrays = NRays();
 		for (size_t i = 0; i < nrays; ++i)

@@ -1,7 +1,7 @@
 #ifndef __PhaseSpace_h
 #define __PhaseSpace_h
 
-#include "..\TM25ReadWrite\LinAlg3.h"
+#include <LinAlg3.h>
 #include <tuple>
 #include <limits>
 #include <stdexcept>

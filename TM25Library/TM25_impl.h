@@ -349,7 +349,7 @@ namespace TM25
 		size_t i = 0;
 		size_t nRaysHisto = 0;
 		double fluxHisto = 0;
-		for (auto idh : dh)
+		for (const auto& idh : dh)
 			{
 			nRaysHisto += idh.nRays_;
 			fluxHisto += idh.flux_;
@@ -363,7 +363,7 @@ namespace TM25
 		i = 0;
 		nRaysHisto = 0;
 		fluxHisto = 0;
-		for (auto ifh : fh)
+		for (const auto& ifh : fh)
 			{
 			nRaysHisto += ifh.nRays_;
 			fluxHisto += ifh.fluxInBin_;
@@ -848,7 +848,7 @@ namespace TM25
 		const std::array<size_t, nStdItems>& itemIndices,
 		size_t i)
 		{
-		float eps = 10 * std::numeric_limits<float>::epsilon();
+		constexpr float eps = 10 * std::numeric_limits<float>::epsilon();
 		bool rv = true;
 		// some lambdas for more concise code below
 		// set the error flag to the first line of occurrence

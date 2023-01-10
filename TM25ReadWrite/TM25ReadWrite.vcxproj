@@ -19,20 +19,20 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ReadFile.cpp" />
-    <ClCompile Include="TestLinAlg.cpp" />
-    <ClCompile Include="TM25.cpp" />
+    <ClCompile Include="..\TM25Library\ReadFile.cpp" />
+    <ClCompile Include="..\TM25Library\TestLinAlg.cpp" />
+    <ClCompile Include="..\TM25Library\TM25.cpp" />
+    <ClCompile Include="..\TM25Library\TM25Util.cpp" />
+    <ClCompile Include="..\TM25Library\WriteFile.cpp" />
     <ClCompile Include="TM25ReadWrite.cpp" />
-    <ClCompile Include="TM25Util.cpp" />
-    <ClCompile Include="WriteFile.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ReadFile.h" />
-    <ClInclude Include="TM25.h" />
-    <ClInclude Include="TM25Util.h" />
-    <ClInclude Include="TM25_impl.h" />
-    <ClInclude Include="LinAlg3.h" />
-    <ClInclude Include="WriteFile.h" />
+    <ClInclude Include="..\TM25Library\LinAlg3.h" />
+    <ClInclude Include="..\TM25Library\ReadFile.h" />
+    <ClInclude Include="..\TM25Library\TM25.h" />
+    <ClInclude Include="..\TM25Library\TM25Util.h" />
+    <ClInclude Include="..\TM25Library\TM25_impl.h" />
+    <ClInclude Include="..\TM25Library\WriteFile.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -91,12 +91,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

@@ -27,7 +27,8 @@ namespace TM25
 		{
 		x = 0, y = 1, z = 2, kx = 3, ky = 4, kz = 5,
 		phi = 6, lambda = 7, Tri_Y = 8, S1 = 9, S2 = 10, S3 = 11,
-		Tri_X = 12, Tri_Z = 13, spectrumIdx = 14, additional = 15
+		PolEllipseX = 12, PolEllipseY = 13, PolEllipseZ = 14,
+		Tri_X = 15, Tri_Z = 16, spectrumIdx = 17, additional = 18
 		};
 
 	constexpr size_t nStdItems = 15;
@@ -99,6 +100,7 @@ namespace TM25
 
 	struct TTM25Header
 		{
+		// no need to define file type 4.7.1.1: always TM25
 		int32_t	version_4_7_1_2;
 		int32_t	creation_method_4_7_1_3;
 		float	phi_v_4_7_1_4;
@@ -113,6 +115,8 @@ namespace TM25
 		float	lambda_max_4_7_1_12;
 		int32_t	n_spectra_4_7_1_13;
 		int32_t	n_addtl_items_4_7_1_14;
+		// no need to define 4.7.1.15 size of addtl text block -> defined as u32string with implicit length
+		// no need to define 4.7.2.1 and 4.7.2.2, both always 1
 		bool	rad_flux_flag_4_7_2_3;
 		bool	lambda_flag_4_7_2_4;
 		bool	lum_flux_flag_4_7_2_5;
@@ -297,6 +301,8 @@ namespace TM25
 			void SetRay(size_t i, const std::array<float, N>& ray);
 			// copies ray into the i'th row
 			// throws TM25Error if ray.size() != nItems or i >= nRays
+			void SetRay(size_t i, const float* begin);
+			// copies ray into the i'th row, starting at begin, iterating over nItem floats
 			void SetItem(size_t j, const std::vector<float>& item);
 			// copies item into the j'th column
 			// throws TM25Error if item.size() != nRays or j >= nItems
@@ -314,6 +320,8 @@ namespace TM25
 			std::pair<TVec3f,TVec3f> BoundingBox() const; // no column information needed -- x and k are in the first six columns
 
 			void Shuffle(size_t ibegin, size_t iend); // Fisher-Yates shuffle of range [ibegin;iend[
+
+			void SetDataDirect(const std::vector<float>& rhs, size_t confirm_nRays, size_t confirm_nItems); // rhs.size() must be nRays * nItems. 
 		private:
 			size_t nRays_;
 			size_t nItems_;
@@ -322,6 +330,7 @@ namespace TM25
 		};
 
 	using TTM25RaySet = TBasicTM25RaySet<TDefaultRayArray>;
+
 	} // namespace TM25
 
 
@@ -330,4 +339,4 @@ namespace TM25
 #include "TM25_impl.h"
 
 	
-#endif
+#endif 

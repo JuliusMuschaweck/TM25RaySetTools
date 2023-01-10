@@ -65,6 +65,9 @@ class TZemaxRaySet
 		float Wavelength() const; // get the wavelength. 
 			// If format type is spectral, this value is ignored.
 
+		float MinWavelength() const;
+		float MaxWavelength() const;
+
 		struct TRay_lam  // single ray record for spectral
 			{
 			float x, y, z,
@@ -89,10 +92,15 @@ class TZemaxRaySet
 
 		TZemaxHeader Header() const;
 
+		const std::vector<float>& Data() const;
+
 		void Read(const std::string& filename);
 		void Write(const std::string& filename) const;
 
 		std::pair<bool, std::string>  HeaderSanityCheck() const;
+
+
+
 
 	private:
 		TZemaxHeader header_;

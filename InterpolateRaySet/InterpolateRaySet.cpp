@@ -1,15 +1,17 @@
 // InterpolateRaySet.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include "../TM25ReadWrite/TM25.h"
+#include <TM25.h>
+#include <ZemaxBinary.h>
+#include <TranslateZemax.h>
 #include "KDTree.h"
 #include <iostream>
 #include "PhaseSpace.h"
 #include <algorithm>
 #include <numeric>
 #include <memory>
-#include "CfgFile.h"
-#include "../TM25ReadWrite/WriteFile.h"
+#include <CfgFile.h>
+#include <WriteFile.h>
 
 #define MULTITHREAD
 #ifdef MULTITHREAD
@@ -33,21 +35,6 @@ using std::cout;
 using std::endl;
 
 
-TM25::TTM25RaySet ReadRaySet(const std::string& fn, std::ostream& info)
-	{
-	info << "Reading ray file " << fn << endl;
-	TM25::TTM25RaySet rs;
-	rs.Read(fn);
-	// rs.Make_k_unit();
-	if (rs.Warnings().empty())
-		info << "No warnings" << endl;
-	for (auto w : rs.Warnings())
-		{
-		info << "Warning: " << w << "\n";
-		}
-	return rs;
-	}
-
 void DisplayRaySetInfo(std::ostream& info)
 	{
 	}
@@ -59,6 +46,7 @@ class TRaySetControlSection : public TSection
 		virtual void AddAllowedValues()
 			{
 			values_.insert({ "inputRayFileName",	MakeDefaultValueTokenSequence<Token::string>(std::string("inputRayFileName missing")) });
+			values_.insert({ "inputRayFileFormat",	MakeDefaultValueTokenSequence<Token::string>(std::string("TM25")) });
 			values_.insert({ "logFileName",			MakeDefaultValueTokenSequence<Token::string>(std::string("InterpolateRaySet.log")) });
 			values_.insert({ "consoleOutput",		MakeDefaultValueTokenSequence<Token::boolean>(true) });
 			values_.insert({ "scrambleInput",		MakeDefaultValueTokenSequence<Token::boolean>(true) });
@@ -69,6 +57,7 @@ class TRaySetControlSection : public TSection
 			values_.insert({ "nOutputRays",			MakeDefaultValueTokenSequence<Token::integer>(1) });
 			values_.insert({ "nNeighbors",			MakeDefaultValueTokenSequence<Token::integer>(10) });
 			values_.insert({ "outputRayFileName",	MakeDefaultValueTokenSequence<Token::string>(std::string("tmp.TM25RAY")) });
+			values_.insert({ "outputRayFileFormat",	MakeDefaultValueTokenSequence<Token::string>(std::string("TM25")) });
 			values_.insert({ "phaseSpaceType",		MakeDefaultValueTokenSequence<Token::identifier>(std::string("VirtualFocusZSphere")) });
 			values_.insert({ "ZPlane_z",			MakeDefaultValueTokenSequence<Token::real>(0.0) });
 			values_.insert({ "ZCylinderRadius",		MakeDefaultValueTokenSequence<Token::real>(1.0) });
@@ -102,6 +91,57 @@ class TInterpolateRaySetCfg : public TConfiguration
 			AddSection(std::move(rcs));
 			}
 	};
+
+TM25::TTM25RaySet ReadRaySet(const TInterpolateRaySetCfg& cfg, std::ostream& info)//const std::string& fn, std::ostream& info)
+	{
+	const TSection& rsc = cfg.Section("RaySetControl");
+	TM25::TTM25RaySet rs;
+	const std::string format = rsc.String("inputRayFileFormat");
+	const std::string fn = rsc.String("inputRayFileName");
+	if (format.compare("TM25") == 0)
+		{
+		info << "Reading TM25 ray file " << fn << endl;
+		rs.Read(fn);
+		// rs.Make_k_unit();
+		if (rs.Warnings().empty())
+			info << "No warnings" << endl;
+		for (auto w : rs.Warnings())
+			{
+			info << "Warning: " << w << "\n";
+			}
+		}
+	else if (format.compare("ZemaxBinary") == 0)
+		{
+		info << "Reading Zemax binary ray file " << fn << endl;
+		TZemaxRaySet zemaxRaySet(fn);
+		rs = TM25::ZemaxBinaryToTM25(zemaxRaySet);
+		}
+	return rs;
+	}
+
+void WriteRaySet(TM25::TTM25RaySet& rs, const TInterpolateRaySetCfg& cfg, std::ostream& info)
+	{
+	const TSection& rsc = cfg.Section("RaySetControl");
+	const std::string format = rsc.String("outputRayFileFormat");
+	const std::string fn = rsc.String("outputRayFileName");
+	if (format.compare("TM25") == 0)
+		{
+		info << "Writing TM25 ray file " << fn << endl;
+		rs.Write(fn);
+		if (rs.Warnings().empty())
+			info << "No warnings" << endl;
+		for (auto w : rs.Warnings())
+			{
+			info << "Warning: " << w << "\n";
+			}
+		}
+	else if (format.compare("ZemaxBinary") == 0)
+		{
+		info << "Writing  Zemax binary ray file " << fn << endl;
+		TZemaxRaySet zemaxRaySet = TM25ToZemaxBinary(rs);
+		zemaxRaySet.Write(fn);
+		}
+	}
 
 // create an ostream that sends output to many other ostreams
 class ComposeStream : public std::ostream
@@ -201,9 +241,9 @@ struct TInterpolateRaySetData
 	std::vector<float> volumes_;
 	std::vector<float> luminances_;
 	std::vector<float> cellFluxes_;
-	float totalVolume_;
-	float totalFlux_;
-	float avgLuminance_;
+	float totalVolume_ = 0.0f;
+	float totalFlux_ = 0.0f;
+	float avgLuminance_ = std::numeric_limits<float>::quiet_NaN();
 	mutable TThreadSafe_stdcout safeout_;
 
 	// sort cells according to luminance, result is the characteristic curve
@@ -220,8 +260,8 @@ struct TInterpolateRaySetData
 	// put cells into bins of equal size, choose quantity of which equal size is desired
 	struct TSkewnessDistribution // see doi:10.1364/JOSAA.14.002855 "Performance limitations of rotationally symmetric nonimaging devices"
 		{
-		TVec3f axis_point_;
-		TVec3f axis_direction_;
+		TVec3f axis_point_{ 0.0f, 0.0f, 0.0f };
+		TVec3f axis_direction_{ 0.0f, 0.0f, 1.0f };
 		enum class BinType { sameSkewness, sameEtendue, sameFlux };
 		std::vector<float> skewness_; // nBins + 1: limits of intervals for bar graph. Compute mean of adjacent value pairs to obtain nBins values for easy plotting
 		std::vector<float> dU_ds_; // nBins
@@ -383,13 +423,13 @@ void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet&
 
 void TInterpolateRaySetData::SetTotalFlux(float newTotalFlux)
 	{
-	double fac = newTotalFlux / totalFlux_;
+	double fac = static_cast<double>(newTotalFlux) / static_cast<double>(totalFlux_);
 	for (auto& f : rayFluxes_)
-		f *= fac;
+		f = static_cast<float>(static_cast<double>(f) * fac);
 	for (auto& l : luminances_)
-		l *= fac;
+		l = static_cast<float>(static_cast<double>(l) * fac);
 	for (auto& c : cellFluxes_)
-		c *= fac;
+		c = static_cast<float>(static_cast<double>(c) * fac);
 	}
 
 // sort v, but return index of permutation instead of modifying v
@@ -510,8 +550,8 @@ TInterpolateRaySetData::TSkewnessDistribution TInterpolateRaySetData::SkewnessDi
 	accumulated_sorted_flux.reserve(nRays);
 	for (size_t i : s_idx)
 		{
-		accumulated_sorted_etendue.push_back(acc_etendue += volumes_[i]);
-		accumulated_sorted_flux.push_back(acc_flux += rayFluxes_[i]);
+		accumulated_sorted_etendue.push_back(static_cast<float>(acc_etendue += volumes_[i]));
+		accumulated_sorted_flux.push_back(static_cast<float>(acc_flux += rayFluxes_[i]));
 		}
 	// now we have three arrays: sorted_skewness, accumulated_sorted_etendue, accumulated_sorted_flux.
 	std::vector<size_t> bin_idx;
@@ -624,7 +664,7 @@ int main(int argc, char* argv[])
 		logS << "config file " << cfgFn << " successfully read, file content:\n";
 		logS << cfg.Content();
 		logS << "%% end of configuration file\n\n";
-		TM25::TTM25RaySet rs = ReadRaySet(rsc.String("inputRayFileName"), logS);
+		TM25::TTM25RaySet rs = ReadRaySet(cfg, logS);
 		if (rsc.Bool("scrambleInput"))
 			{
 			rs.Shuffle();
@@ -680,7 +720,7 @@ int main(int argc, char* argv[])
 		else
 			throw std::runtime_error("InterpolateRaySet: no valid phase space type");
 		if (!rsc.IsEmpty("setTotalFlux"))
-			interpRaySetData.SetTotalFlux(rsc.Real("setTotalFlux"));
+			interpRaySetData.SetTotalFlux(static_cast<float>(rsc.Real("setTotalFlux")));
 
 		size_t nRays = rs.NRays();
 
@@ -782,7 +822,9 @@ int main(int argc, char* argv[])
 		header.n_rays_4_7_1_6 = rayArray.NRays();
 		TM25::TTM25RaySet interpolatedRaySet(header, std::move(rayArray));
 
-		logS << "writing " << rayArray.NRays() << " rays to TM25 ray file " << rsc.String("outputRayFileName");
+		logS << "writing " << header.n_rays_4_7_1_6 << " rays to TM25 ray file " << rsc.String("outputRayFileName");
+		
+
 		interpolatedRaySet.Write(rsc.String("outputRayFileName"));
 
 		TM25::TTM25RaySet test_rs;
