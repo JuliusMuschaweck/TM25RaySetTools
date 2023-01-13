@@ -1,3 +1,4 @@
+//
 // Playground.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
@@ -7,6 +8,8 @@
 #include <array>
 #include <vector> 
 #include "../InterpolateRaySet/KDTree.h"
+#include <ParseString.h>
+#include <ReadFile.h>
 
 void TestBuf()
 	{
@@ -21,7 +24,20 @@ void TestBuf()
 
 int main()
 {
-    std::cout << "Hello World!\n"; 
+	auto items = SplitString(""," \t");
+	items = SplitString(" abc ", " \t");
+	items = SplitString("abc ", " \t");
+	items = SplitString(" abc", " \t");
+	items = SplitString(" abc def\tg\t h", " \t");
+
+	TM25::TReadFile rf("../TM25Library/Timer.h");
+	while (!rf.AtEof())
+		{
+		std::string s = rf.ReadLine(true);
+		std::cout << s;
+		}
+
+	std::cout << "Hello World!\n";
 	if (KDTree::Def::dim == 2)
 		KDTree::TestKDTree2D("TestKDTree.m");
 	if (KDTree::Def::dim == 4)

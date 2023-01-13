@@ -154,10 +154,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\InterpolateRaySet\KDTree.h" />
+    <ClInclude Include="..\TM25Library\ParseString.h" />
+    <ClInclude Include="..\TM25Library\ReadFile.h" />
     <ClInclude Include="..\TM25Library\Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\InterpolateRaySet\KDTree.cpp" />
+    <ClCompile Include="..\TM25Library\ParseString.cpp" />
+    <ClCompile Include="..\TM25Library\ReadFile.cpp" />
     <ClCompile Include="..\TM25Library\Timer.cpp" />
     <ClCompile Include="Playground.cpp" />
   </ItemGroup>

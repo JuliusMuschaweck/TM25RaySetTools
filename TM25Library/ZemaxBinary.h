@@ -94,7 +94,7 @@ class TZemaxRaySet
 
 		const std::vector<float>& Data() const;
 
-		void Read(const std::string& filename);
+		void Rea d(const std::string& filename);
 		void Write(const std::string& filename) const;
 
 		std::pair<bool, std::string>  HeaderSanityCheck() const;

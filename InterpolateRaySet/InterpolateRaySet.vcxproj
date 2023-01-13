@@ -168,6 +168,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\TM25Library\CfgFile.cpp" />
+    <ClCompile Include="..\TM25Library\ParseString.cpp" />
     <ClCompile Include="..\TM25Library\ReadFile.cpp" />
     <ClCompile Include="..\TM25Library\Timer.cpp" />
     <ClCompile Include="..\TM25Library\TM25.cpp" />
@@ -183,6 +184,7 @@
   <ItemGroup>
     <ClInclude Include="..\TM25Library\CfgFile.h" />
     <ClInclude Include="..\TM25Library\LinAlg3.h" />
+    <ClInclude Include="..\TM25Library\ParseString.h" />
     <ClInclude Include="..\TM25Library\ReadFile.h" />
     <ClInclude Include="..\TM25Library\Timer.h" />
     <ClInclude Include="..\TM25Library\TM25.h" />

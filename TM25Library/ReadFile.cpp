@@ -67,6 +67,49 @@ namespace TM25
 		return ReadDirectIf(&(t[0]),n);
 		}
 
+	std::string TReadFile::ReadLine(bool includeEOL)
+		{
+		std::string rv;
+		while (!AtEof()) // see what comes next
+			{
+			char c;
+			if (ReadIf<char>(c))
+				{ // next char is available
+				if (c != 10 && c != 13) 
+					{ // a non-eol character
+					rv.push_back(c);
+					}
+				else // a newline
+					{
+					if (includeEOL) 
+						rv.push_back(c);
+					if (c == 13) // see if next is 10, Windows standard
+						{
+						if (PeekDirectIf(&c, 1) && c == 10) // yes
+							{
+							Advance(1);
+							if (includeEOL)
+								rv.push_back(c);
+							}
+						}
+					else // c == 10, see if next is 13, nonstandard
+						{
+						if (PeekDirectIf(&c, 1) && c == 13) // yes
+							{
+							Advance(1);
+							if (includeEOL)
+								rv.push_back(c);
+							}
+						}
+					return rv;
+					}
+				}
+			else // ReadIf failed for whatever reason -- done
+				return rv;
+			}
+		return rv;
+		}
+
 	bool TReadFile::AtEof() const
 		{
 		return all_read_from_f && (buf_pos == buf_end);
@@ -192,6 +235,8 @@ namespace TM25
 			}
 		return rv;
 		}
+
+
 
 	}
 

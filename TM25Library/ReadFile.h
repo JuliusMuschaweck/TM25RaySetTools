@@ -98,6 +98,12 @@ namespace TM25
 			// use when n is known at run time only
 			// returns true on success, false if file not open or too short
 
+			std::string ReadLine(bool includeEOL = false);
+			// read characters from current position until an EOL character is encountered
+			//  i.e. char(10) or char(13). 
+			// A complete EOL is (13 10) | (10 13) | (10 something else) | (13 something else)
+			// The complete EOL is read. The resulting string is returned, with or w/o the EOL depending on flag
+
 			bool AtEof() const;
 			// returns true if all bytes in the file have been read
 
@@ -197,8 +203,7 @@ namespace TM25
 	template<typename T>
 	bool TReadFile::ReadIf(T& t)
 		{
-		T rv;
-		char* p = reinterpret_cast<char*>(&rv);
+		char* p = reinterpret_cast<char*>(&t);
 		return ReadDirectIf(p, sizeof(T));
 		}
 
