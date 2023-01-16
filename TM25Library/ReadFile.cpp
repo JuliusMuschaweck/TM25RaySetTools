@@ -12,18 +12,19 @@ or http://unlicense.org/
 #include "ReadFile.h"
 #include <cstring> // for memcpy
 #include <sys/stat.h>
+#include "ParseString.h"
 
 namespace TM25
 	{
 	size_t FileSize(const std::string& fn)
 		{
-		#ifdef _MSC_VER
- 		struct _stat64 ss;
+#ifdef _MSC_VER
+		struct _stat64 ss;
 		int test = _stat64(fn.c_str(), &ss);
-		#else
+#else
 		struct stat ss;
 		int test = stat(fn.c_str(), &ss);
-		#endif
+#endif
 		static_assert(sizeof(ss.st_size) == 8, "FileSize: stat.st_size is not 8 byte");
 		if (test == 0)
 			return ss.st_size;
@@ -36,7 +37,7 @@ namespace TM25
 		try
 			{
 			buf.resize(buf_size);
-			f.open(filename,std::ios_base::in | std::ios_base::binary);
+			f.open(filename, std::ios_base::in | std::ios_base::binary);
 			if (!f.good())
 				throw std::runtime_error("file not found");
 			pos = 0;
@@ -64,24 +65,31 @@ namespace TM25
 	bool TReadFile::ReadBytesIf(std::vector<char>& t, const size_t n)
 		{
 		t.resize(n);
-		return ReadDirectIf(&(t[0]),n);
+		return ReadDirectIf(&(t[0]), n);
 		}
 
 	std::string TReadFile::ReadLine(bool includeEOL)
 		{
 		std::string rv;
+		ReadLine(rv, includeEOL);
+		return rv;
+		}
+
+	const std::string& TReadFile::ReadLine(std::string& rv, bool includeEOL)
+		{
+		rv.resize(0); // does not free the underlying memory! 
 		while (!AtEof()) // see what comes next
 			{
 			char c;
 			if (ReadIf<char>(c))
 				{ // next char is available
-				if (c != 10 && c != 13) 
+				if (c != 10 && c != 13)
 					{ // a non-eol character
 					rv.push_back(c);
 					}
 				else // a newline
 					{
-					if (includeEOL) 
+					if (includeEOL)
 						rv.push_back(c);
 					if (c == 13) // see if next is 10, Windows standard
 						{
@@ -107,7 +115,7 @@ namespace TM25
 			else // ReadIf failed for whatever reason -- done
 				return rv;
 			}
-		return rv;
+		return;
 		}
 
 	bool TReadFile::AtEof() const
@@ -173,7 +181,7 @@ namespace TM25
 			else
 				{
 				throw TReadFileError("TReadFile::PeekDirectIf: cannot peek variables larger than "
-					+ std::to_string(buf_size)+" bytes");
+					+ std::to_string(buf_size) + " bytes");
 				}
 			}
 		return true;
@@ -181,29 +189,29 @@ namespace TM25
 
 	size_t TReadFile::BufAvail() const // bytes remaining in buffer
 		{
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		if (buf_pos > buf_end)
 			throw TReadFileError("TReadFile::BufAvail(): buf_pos > buf_end, this cannot happen");
-		#endif		 
+#endif		 
 		return buf_end - buf_pos;
 		}
 
 	void TReadFile::Advance(size_t n)
 		{
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		if ((buf_pos + n) > buf_end)
 			throw TReadFileError("TReadFile::Advance(): buf_pos + n > buf_end, this cannot happen");
-		#endif		 
+#endif		 
 		buf_pos += n;
 		pos += n;
 		}
 
 	void TReadFile::Overflow() // read new data from file and fill buffer
 		{
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		if (buf_pos > buf_end)
 			throw TReadFileError("TReadFile::BufAvail(): buf_pos > buf_end, this cannot happen");
-		#endif		 
+#endif		 
 		size_t n_remain = buf_end - buf_pos;
 		std::memmove(buf.data(), buf.data() + buf_pos, n_remain);
 		buf_pos = 0;
@@ -211,10 +219,10 @@ namespace TM25
 		size_t n_req = buf_size - buf_end;
 		size_t n_read = ReadDirectFromFile(buf.data() + buf_end, n_req);
 		buf_end += n_read;
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		if (buf_end > buf_size)
 			throw TReadFileError("TReadFile::BufAvail(): buf_end > buf_size, this cannot happen");
-		#endif		 
+#endif		 
 
 		}
 
@@ -236,7 +244,4 @@ namespace TM25
 		return rv;
 		}
 
-
-
 	}
-

@@ -101,42 +101,40 @@ namespace TM25
 	struct TTM25Header
 		{
 		// no need to define file type 4.7.1.1: always TM25
-		int32_t	version_4_7_1_2;
-		int32_t	creation_method_4_7_1_3;
-		float	phi_v_4_7_1_4;
-		float	phi_4_7_1_5;
-		uint64_t n_rays_4_7_1_6;
-		std::string	file_date_time_str_4_7_1_7;
+		int32_t	version_4_7_1_2 = 2013; // must be
+		int32_t	creation_method_4_7_1_3 = 0; // Simulation
+		float	phi_v_4_7_1_4 = std::numeric_limits<float>::signaling_NaN(); // only radiant flux
+		float	phi_4_7_1_5 = 1;
+		uint64_t n_rays_4_7_1_6 = 0;
+		std::string	file_date_time_str_4_7_1_7 = "2013-09-04T08:30:29+01:00"; // example from TM25
 //		std::chrono::time_point<std::chrono::system_clock> file_date_time;
-		int32_t	start_position_4_7_1_8;
-		int32_t	spectrum_type_4_7_1_9;
-		float	lambda_4_7_1_10;
-		float	lambda_min_4_7_1_11;
-		float	lambda_max_4_7_1_12;
-		int32_t	n_spectra_4_7_1_13;
-		int32_t	n_addtl_items_4_7_1_14;
+		int32_t	start_position_4_7_1_8 = 0; // unknown;
+		int32_t	spectrum_type_4_7_1_9 = 1; // single wavelength 
+		float	lambda_4_7_1_10 = 500;
+		float	lambda_min_4_7_1_11 = std::numeric_limits<float>::signaling_NaN();
+		float	lambda_max_4_7_1_12 = std::numeric_limits<float>::signaling_NaN();
+		int32_t	n_spectra_4_7_1_13 = 0; // no spectra
+		int32_t	n_addtl_items_4_7_1_14 = 0; // no addtl items
 		// no need to define 4.7.1.15 size of addtl text block -> defined as u32string with implicit length
 		// no need to define 4.7.2.1 and 4.7.2.2, both always 1
-		bool	rad_flux_flag_4_7_2_3;
-		bool	lambda_flag_4_7_2_4;
-		bool	lum_flux_flag_4_7_2_5;
-		bool	stokes_flag_4_7_2_6;
-		bool	tristimulus_flag_4_7_2_7;
-		bool	spectrum_index_flag_4_7_2_8;
-		std::u32string	name_4_7_3_1;
-		std::u32string	manufacturer_4_7_3_2;
-		std::u32string	model_creator_4_7_3_3;
-		std::u32string	rayfile_creator_4_7_3_4;
-		std::u32string	equipment_4_7_3_5;
-		std::u32string	camera_4_7_3_6;
-		std::u32string	lightsource_4_7_3_7;
-		std::u32string	additional_info_4_7_3_8;
-		std::u32string	data_reference_4_7_3_9;
-		std::vector<TSpectralTable>	spectra_4_7_4;
-		std::vector<std::u32string>	column_names_4_7_5;
-		std::u32string	additional_text_4_7_6;
-
-		TTM25Header();
+		bool	rad_flux_flag_4_7_2_3 = true;
+		bool	lambda_flag_4_7_2_4 = false;
+		bool	lum_flux_flag_4_7_2_5 = false;
+		bool	stokes_flag_4_7_2_6 = false;
+		bool	tristimulus_flag_4_7_2_7 = false;
+		bool	spectrum_index_flag_4_7_2_8 = false;
+		std::u32string	name_4_7_3_1 = U"unknown";
+		std::u32string	manufacturer_4_7_3_2 = U"unknown";;
+		std::u32string	model_creator_4_7_3_3 = U"unknown";;
+		std::u32string	rayfile_creator_4_7_3_4 = U"unknown";;
+		std::u32string	equipment_4_7_3_5 = U"unknown";;
+		std::u32string	camera_4_7_3_6 = U"unknown";;
+		std::u32string	lightsource_4_7_3_7 = U"unknown";;
+		std::u32string	additional_info_4_7_3_8 = U"none";;
+		std::u32string	data_reference_4_7_3_9 = U"unknown";;
+		std::vector<TSpectralTable>	spectra_4_7_4; // default constructor -> empty
+		std::vector<std::u32string>	column_names_4_7_5; // default constructor -> empty
+		std::u32string	additional_text_4_7_6; // default constructor -> empty
 
 		struct TSanityCheck
 			{
@@ -290,6 +288,8 @@ namespace TM25
 		public:
 			TDefaultRayArray();
 			TDefaultRayArray(size_t nRays, size_t nItems);
+			TDefaultRayArray(size_t nRays, size_t nItems, std::vector<float>&& data);
+			TDefaultRayArray(size_t nRays, size_t nItems, const std::vector<float>& data);
 			void Resize(size_t nRays, size_t nItems); // postcondition: filled with NaN
 			void Clear();
 			size_t NRays() const;

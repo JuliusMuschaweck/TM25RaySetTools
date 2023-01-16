@@ -113,7 +113,7 @@ TM25::TTM25RaySet ReadRaySet(const TInterpolateRaySetCfg& cfg, std::ostream& inf
 	else if (format.compare("ZemaxBinary") == 0)
 		{
 		info << "Reading Zemax binary ray file " << fn << endl;
-		TZemaxRaySet zemaxRaySet(fn);
+		TM25::TZemaxRaySet zemaxRaySet(fn);
 		rs = TM25::ZemaxBinaryToTM25(zemaxRaySet);
 		}
 	return rs;
@@ -138,7 +138,7 @@ void WriteRaySet(TM25::TTM25RaySet& rs, const TInterpolateRaySetCfg& cfg, std::o
 	else if (format.compare("ZemaxBinary") == 0)
 		{
 		info << "Writing  Zemax binary ray file " << fn << endl;
-		TZemaxRaySet zemaxRaySet = TM25ToZemaxBinary(rs);
+		TM25::TZemaxRaySet zemaxRaySet = TM25ToZemaxBinary(rs);
 		zemaxRaySet.Write(fn);
 		}
 	}

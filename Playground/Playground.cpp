@@ -24,11 +24,23 @@ void TestBuf()
 
 int main()
 {
+	std::vector<std::pair<size_t, size_t>> testresize;
+	testresize.resize(10000);
+	std::cout << testresize.capacity() << ' ';
+	testresize.resize(0);
+	std::cout << testresize.capacity() << '\n';
+
+	
 	auto items = SplitString(""," \t");
 	items = SplitString(" abc ", " \t");
 	items = SplitString("abc ", " \t");
 	items = SplitString(" abc", " \t");
 	items = SplitString(" abc def\tg\t h", " \t");
+
+	double d = std::stod("123.45");
+	std::vector<double> tmp;
+	std::cout << sizeof(std::vector<double>) << '\n';
+	std::cout << sizeof(std::string) << '\n';
 
 	TM25::TReadFile rf("../TM25Library/Timer.h");
 	while (!rf.AtEof())

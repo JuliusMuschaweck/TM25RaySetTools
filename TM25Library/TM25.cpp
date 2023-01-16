@@ -326,41 +326,6 @@ namespace TM25
 		}
 
 	// TTM25Header implementation
-	TTM25Header::TTM25Header()
-		{
-		version_4_7_1_2 = 2013; // must be
-		creation_method_4_7_1_3 = 0; // Simulation
-		phi_v_4_7_1_4 = std::numeric_limits<float>::signaling_NaN(); // only radiant flux
-		phi_4_7_1_5 = 1;
-		n_rays_4_7_1_6 = 0;
-		file_date_time_str_4_7_1_7 = "2013-09-04T08:30:29+01:00"; // example from TM25
-		start_position_4_7_1_8 = 0; // unknown
-		spectrum_type_4_7_1_9 = 1; // single wavelength 
-		lambda_4_7_1_10 = 500; // std::numeric_limits<float>::signaling_NaN();
-		lambda_min_4_7_1_11 = std::numeric_limits<float>::signaling_NaN();
-		lambda_max_4_7_1_12 = std::numeric_limits<float>::signaling_NaN();
-		n_spectra_4_7_1_13 = 0; // no spectra
-		n_addtl_items_4_7_1_14 = 0; // no additional items
-		rad_flux_flag_4_7_2_3 = true;
-		lambda_flag_4_7_2_4 = false;
-		lum_flux_flag_4_7_2_5 = false;
-		stokes_flag_4_7_2_6 = false;
-		tristimulus_flag_4_7_2_7 = false;
-		spectrum_index_flag_4_7_2_8 = false;
-		name_4_7_3_1 = U"default";
-		manufacturer_4_7_3_2 = U"unknown";
-		model_creator_4_7_3_3 = U"unknown";
-		rayfile_creator_4_7_3_4 = U"unknown";
-		equipment_4_7_3_5 = U"unknown";
-		camera_4_7_3_6 = U"unknown";
-		lightsource_4_7_3_7 = U"unknown";
-		additional_info_4_7_3_8 = U"none";
-		data_reference_4_7_3_9 = U"unknown";
-		// default constructors just fine for these three:
-		// std::vector<TSpectralTable>	spectra_4_7_4;
-		// std::vector<std::u32string>	column_names_4_7_5;
-		// std::u32string	additional_text_4_7_6;
-		}
 
 	TTM25Header::TSanityCheck::TSanityCheck()
 		: msg(), nonfatalErrors(false), fatalErrors(false)
@@ -466,6 +431,26 @@ namespace TM25
 	TDefaultRayArray::TDefaultRayArray(size_t nRays, size_t nItems)
 		: nRays_(nRays), nItems_(nItems),
 		data_(nRays * nItems, std::numeric_limits<float>::signaling_NaN()) {};
+
+	TDefaultRayArray::TDefaultRayArray(size_t nRays, size_t nItems, std::vector<float>&& data)
+		: nRays_(nRays), nItems_(nItems)
+		{
+		size_t nflts = nRays * nItems;
+		if (data.size() != nflts)
+			throw std::runtime_error("TDefaultRayArray::TDefaultRayArray : data has wrong size");
+		data_ = std::move(data);
+		}
+
+	TDefaultRayArray::TDefaultRayArray(size_t nRays, size_t nItems, const std::vector<float>& data)
+		: nRays_(nRays), nItems_(nItems)
+		{
+		size_t nflts = nRays * nItems;
+		if (data.size() != nflts)
+			throw std::runtime_error("TDefaultRayArray::TDefaultRayArray : data has wrong size");
+		data_.resize(nRays * nItems);
+		std::copy(data.begin(), data.end(), data_.begin());
+		}
+
 
 	void TDefaultRayArray::Resize(size_t nRays, size_t nItems)
 		{

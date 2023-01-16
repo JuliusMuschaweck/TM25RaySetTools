@@ -24,6 +24,8 @@ or http://unlicense.org/
 #include <streambuf>
 #include <stdexcept>
 #include <fstream>
+#include <limits>
+#include "ParseString.h"
 
 namespace TM25
 	{
@@ -104,6 +106,14 @@ namespace TM25
 			// A complete EOL is (13 10) | (10 13) | (10 something else) | (13 something else)
 			// The complete EOL is read. The resulting string is returned, with or w/o the EOL depending on flag
 
+			const std::string& ReadLine(std::string& rv, bool includeEOL = false);
+			// read characters from current position until an EOL character is encountered
+			//  i.e. char(10) or char(13). 
+			// A complete EOL is (13 10) | (10 13) | (10 something else) | (13 something else)
+			// The complete EOL is read. The resulting string is returned, with or w/o the EOL depending on flag
+			// Use this overload in a loop with the same rv string to avoid memory allocation overhead
+			// Returns reference to buf to ease usage of resulting string in function call to e.g. some parser
+
 			bool AtEof() const;
 			// returns true if all bytes in the file have been read
 
@@ -140,7 +150,6 @@ namespace TM25
 		};
 	}
 
-// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // template definitions
 
 namespace TM25
@@ -212,5 +221,7 @@ namespace TM25
 		{
 		return ReadDirectIf(&(t[0]), N);
 		}
+
+
 	}
 #endif
