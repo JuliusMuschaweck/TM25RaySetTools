@@ -10,6 +10,8 @@
 #include "../InterpolateRaySet/KDTree.h"
 #include <ParseString.h>
 #include <ReadFile.h>
+#include <ASCIIRayFile.h>
+#include <Tokenize.h>
 
 void TestBuf()
 	{
@@ -24,13 +26,19 @@ void TestBuf()
 
 int main()
 {
-	std::vector<std::pair<size_t, size_t>> testresize;
-	testresize.resize(10000);
-	std::cout << testresize.capacity() << ' ';
-	testresize.resize(0);
-	std::cout << testresize.capacity() << '\n';
-
+	KDTree::TestKDTree4D();
+	TestTokenize();
 	
+	std::string fn = "../TestRayFiles/ZemaxText.txt";
+	TM25::TASCIIRaySetOptions opts;
+	opts.minHeaderLines = 1;
+	opts.wavelengthUnit_ = TM25::TASCIIRaySetOptions::WLU::micrometer;
+	TM25::TTM25RaySet rs = TM25::ReadGenericASCIIRaySet(fn, opts);
+	fn = "../TestRayFiles/ZemaxWavelengthText.txt";
+	TM25::TTM25RaySet rs2 = TM25::ReadGenericASCIIRaySet(fn, opts);
+	fn = "../TestRayFiles/deleteme.txt";
+	TM25::TTM25RaySet rs3 = TM25::ReadGenericASCIIRaySet(fn, opts);
+
 	auto items = SplitString(""," \t");
 	items = SplitString(" abc ", " \t");
 	items = SplitString("abc ", " \t");

@@ -16,12 +16,15 @@ or http://unlicense.org/
 
 namespace TM25
 	{
+
 	size_t FileSize(const std::string& fn)
 		{
 #ifdef _MSC_VER
 		struct _stat64 ss;
 		int test = _stat64(fn.c_str(), &ss);
-#else
+#else	
+		// we could use SFINAE, see https://stackoverflow.com/questions/257288/templated-check-for-the-existence-of-a-class-member-function
+		// to determine if stat64 is available 
 		struct stat ss;
 		int test = stat(fn.c_str(), &ss);
 #endif
@@ -115,7 +118,7 @@ namespace TM25
 			else // ReadIf failed for whatever reason -- done
 				return rv;
 			}
-		return;
+		return rv;
 		}
 
 	bool TReadFile::AtEof() const
@@ -175,7 +178,8 @@ namespace TM25
 				{
 				Overflow();
 				if (n > BufAvail())
-					throw TReadFileError("TReadFile::PeekDirectIf: file too short");
+					// throw TReadFileError("TReadFile::PeekDirectIf: file too short");
+					return false;
 				std::memcpy(t, buf.data() + buf_pos, n);
 				}
 			else
@@ -229,7 +233,8 @@ namespace TM25
 	size_t TReadFile::ReadDirectFromFile(char* t, size_t n)
 		{
 		if ((n > 0) && all_read_from_f)
-			throw TReadFileError("TReadFile::ReadDirectFromFile(): trying to read beyond eof, this cannot happen");
+			// throw TReadFileError("TReadFile::ReadDirectFromFile(): trying to read beyond eof, this cannot happen");
+			return 0;
 		size_t rv;
 		try
 			{

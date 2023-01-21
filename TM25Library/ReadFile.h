@@ -136,7 +136,7 @@ namespace TM25
 			size_t buf_pos; // position in the buffer buf
 			size_t buf_end; // max. position in the buffer + 1, < bufsize iff eof has been loaded
 			bool all_read_from_f; // true if reading from f has reached eof;
-			static const size_t buf_size = 10 * 1024 * 1024; // read chunks of 10 MB;
+			static constexpr size_t buf_size = 10 * 1024 * 1024; // read chunks of 10 MB;
 			// static constexpr size_t overlap_size = 1024 * 1024; // 1 MB overlap
 			std::vector<char> buf;
 			std::ifstream f;

@@ -103,5 +103,7 @@ namespace TM25
 		zh.RaySetFlux = zh.SourceFlux; // The flux in watts represented by this Ray Set
 		zh.DimensionUnits = 4; // METERS=0, IN=1, CM=2, FEET=3, MM=4
 
+//TODO: complete code
+
 		}
 	} // namespace

@@ -7,21 +7,61 @@
 #include <stack>
 #include <random>
 #include <functional>
+#include <iterator>
 // #include <mutex>
 // #include <atomic>
 
 namespace KDTree
 	{
 
+	/* KDTree: 
+	A KD tree is a tree structure, organizing a set of points in n-dimensional space. 
+	For a given set of points (an unordered 1-dimensional array of n-dimensional points), creating the tree follows this procedure:
+	1) The overall bounding box is determined
+	2) The set of points is partitioned according to the coordinates of the first dimension, 
+		such that we have two subsets of equal size (for an even number of points) or two subsets whose size differs by one;
+		the "lower" half and the "upper" half.
+	3) Each of the two subsets is partitioned into two halves, a lower half and an upper half, but now along the second dimension
+	4) The procedure continues, cycling through the dimensions, until a stopping criterion is reached. In our case, we continue until 
+		each subset contains exactly one point.
+	The data structures are organized as follows:
+	The tree structure consists of nodes. The full set of points is contained in the "root node", which has two child nodes: the upper and the lower half
+	Each child node again has two child nodes, except if it contains only a single point. Nodes with single points and no child nodes are called "leaf nodes"
+	
+	We need a number of bookkeeping data structures.
+	1) The underlying "point array", length m, of n-dim points, as a std::vector<std::array<float, ndim>>. Each array entry is a n-dim point.
+	2) The same array transposed, as a std::array<std::vector<float>, ndim>. Each array entry is a long vector (length m) of a single coordinates
+		We use this transposed array for the partitioning algorithm.
+	3) An array of integer indices into the "point array", of length m: the "point index array", which is a permutation of the range 0..(m-1). The permutation is such that
+		each node contains a consecutive range of entries in this "point index array". This array essentially contains the sorting information. 
+		The "point index array" allows to denote the potentially large number of points in a node to be stored by two numbers, the first and the one-beyond-last point index entry.
+		This array answers the question: "Which actual points belong to a node?"
+	4) The reverse permutation of the "point index array": the "reverse point index array". Length = m.
+		This array answers the question: "For a given point, with position i in the point array: Which entry in the point index array points to this i'th point?"
+	5) The array of nodes, starting with the root node, followed by the two child nodes of the root node, followed by the two child nodes of the first child and so on.
+		This "Node array" has 2 * m - 1 entries (draw the trees for m = 1, 2, 3, 4 to verify).
+	6) An array of indices into the node array: The "node index array", of length m.
+		This "node index array" answers the question: "Which node in the node array is the leaf node containing the i'th point in the point array?"
+		It follows that i == point index array[node array[node index array[i]]->first point], or in other words:
+		The i'th entry in the node index array is an integer k. The k'th entry in the node array is a node l. This node l has an integer data member, beginPoint. 
+		The beginPoint'th entry in the point index array is an integer j. For a consistent tree, j == i.
+	*/
+
+	
+	// Contains type definitions and the underlying dimension
 	class Def
 		{
 		public:
 			static constexpr size_t dim = 4;
 
-			using TReal = float;
-			using TIdx = std::uint32_t;
+			using TReal = float; // for ray files, float is appropriate -- all binary formats use float, all text formats don't typically use more than seven digits per number
+			using TIdx = std::uint32_t; // ray files beyond 2^3 = 4 billion rays are not known.
 			struct TPointIdx { TIdx pi_; }; // index into array of points
-			struct TIdxIdx { TIdx ii_; }; // index into array of TPointIdx
+			struct TIdxIdx {
+				TIdx ii_;
+				TIdxIdx& operator++() { ++ii_; return *this; };
+				TIdxIdx operator++(int) { return TIdxIdx{ ii_++ }; };
+				}; // index into array of TPointIdx
 			struct TNodeIdx { TIdx ni_; };
 			static constexpr TIdx invalidIdx = std::numeric_limits<TIdx>::max();
 			using TKDPoint = std::array<TReal, dim>;
@@ -31,15 +71,20 @@ namespace KDTree
 			using TIdxIdxArray = std::vector<TIdxIdx>;
 			using TNodeIdxArray = std::vector<TNodeIdx>;
 			using TRealArray = std::vector<TReal>;
+			using TBox = std::pair<Def::TKDPoint, Def::TKDPoint>;
 		};
 
 	Def::TReal Distance(const Def::TKDPoint& p1, const Def::TKDPoint& p2);
 
-	std::pair<Def::TKDPoint, Def::TKDPoint> BoundingBox(const Def::TKDPoints& pts);
+	Def::TBox BoundingBox(const Def::TKDPoints& pts);
 
-	bool IsInBox(const std::pair<Def::TKDPoint, Def::TKDPoint>& boundingBox, const Def::TKDPoint& pt);
-	bool AreInBox(const std::pair<Def::TKDPoint, Def::TKDPoint>& boundingBox, const Def::TKDPoints& pts);
+	bool IsInBox(const Def::TBox& boundingBox, const Def::TKDPoint& pt);
+	bool AreInBox(const Def::TBox& boundingBox, const Def::TKDPoints& pts);
+	std::array<Def::TKDPoint, 16> BoxCorners(const Def::TBox& box);
+	bool BoxesOverlap(const Def::TBox& lhs, const Def::TBox& rhs); // touch is sufficient, i.e. neighboring boxes do overlap
+	bool BoxIsWithinBox(const Def::TBox& lhs, const Def::TBox& rhs); // lhs is fully within closed rhs;  i.e. BoxIsWithinBox( b, b ) == true
 	Def::TKDPoint MidPoint(const Def::TKDPoint& p0, const Def::TKDPoint& p1);
+
 
 	struct TNode
 		{
@@ -64,6 +109,7 @@ namespace KDTree
 		Def::TIdx NPoints() const { return endpt_.ii_ - beginpt_.ii_; }
 		Def::TReal Distance(const Def::TKDPoint& pt) const; // return distance of pt to nearest corner, 0 if inside
 		Def::TReal Volume() const;
+		Def::TBox Box() const { return Def::TBox{ corner0_, corner1_ }; };
 
 		// partition node into nPoints sub-blocks which all have same volume.
 		// precondition: point must be within this node bounding box
@@ -93,7 +139,7 @@ namespace KDTree
 			const TPointIdxArray& Index() const; // the array of indices into the point array
 			const TIdxIdxArray& ReverseIndex() const; // the inverse permutation of Index()
 			const TNodeIdxArray& NodeIndex() const; // which leaf node contains the i'th point in Points()
-			std::pair<TKDPoint, TKDPoint> BoundingBox() const;
+			TBox BoundingBox() const;
 
 			// make indices into various arrays type safe
 			// convention: use only these access functions. Could be implemented by creating proxy classes for pts_,idx_,reverseIdx_ etc
@@ -117,6 +163,15 @@ namespace KDTree
 			TNodeIdx Locate(const TKDPoint& pt) const; 
 			// returns the index of the node which contains point i; returns invalidIdx if i >= pts_.size()
 			TNodeIdx Locate(TPointIdx pi) const;
+
+			// find the indices of the points which are within the box
+			TPointIdxArray LocatePointsWithinBox(const Def::TBox& box) const;
+			// find the indices of the points which are within the box via KD tree
+			TPointIdxArray LocatePointsWithinBox2(const Def::TBox& box) const;
+
+			// find the indices of the points whose nodes overlap 
+			TPointIdxArray LocateOverlapping(const Def::TBox& box) const;
+
 
 			// nearest neighbors
 			struct TNearestNeighbors
@@ -146,14 +201,16 @@ namespace KDTree
 			TNodeIdx PopWork();
 			void SplitNext();
 
+			void LocatePointsOneNode(const TNode& node, const Def::TBox& box, Def::TPointIdxArray& pts) const;
 
 			TKDPoints pts_;
 			std::array<std::vector<Def::TReal>, Def::dim> ptCoords_; // rearranged pts_ for linear access of individual coordinates, avoids page faults in splitting algorithm
-			std::pair<TKDPoint, TKDPoint> boundingBox_;
-			TPointIdxArray idx_; // the shuffled index array which arranges pts into tree structure
+			Def::TBox boundingBox_;  // the overall bounding box
+			TPointIdxArray idx_; // the shuffled index array which arranges pts into tree structure. Nodes contain contiguous ranges within this array
 			TIdxIdxArray reverseIdx_; // the reverse shuffling: which idx_ entry points to the i'th point
 			TNodeArray nodes_; // the list of nodes, starting with the root node. Contains 2 * pts_size() - 1 nodes
 			TNodeIdxArray nodeIdx_; // which leaf node contains the i'th point in pts
+
 			std::stack<TNodeIdx> work_; // the nodes to be splitted
 			// std::mutex mutex_;
 		};

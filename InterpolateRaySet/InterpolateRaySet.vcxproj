@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -179,8 +179,12 @@
     <ClCompile Include="..\TM25Library\WriteFile.cpp" />
     <ClCompile Include="..\TM25Library\ZemaxBinary.cpp" />
     <ClCompile Include="InterpolateRaySet.cpp" />
+    <ClCompile Include="InterpolateRaySetConfig.cpp" />
+    <ClCompile Include="InterpolateRaySetData.cpp" />
+    <ClCompile Include="InterpolateRaySet_IO.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="PhaseSpace.cpp" />
+    <ClCompile Include="PhaseSpaceGrid.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\TM25Library\ASCIIRayFile.h" />
@@ -196,8 +200,13 @@
     <ClInclude Include="..\TM25Library\TranslateZemax.h" />
     <ClInclude Include="..\TM25Library\WriteFile.h" />
     <ClInclude Include="..\TM25Library\ZemaxBinary.h" />
+    <ClInclude Include="InterpolateRaySetConfig.h" />
+    <ClInclude Include="InterpolateRaySetData.h" />
+    <ClInclude Include="InterpolateRaySet_IO.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="PhaseSpace.h" />
+    <ClInclude Include="PhaseSpaceGrid.h" />
+    <ClInclude Include="PhaseSpaceImpl.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

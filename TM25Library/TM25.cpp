@@ -40,7 +40,7 @@ namespace TM25
 				itemStrings[RayItem::S1] = U"S1";
 				itemStrings[RayItem::S2] = U"S2";
 				itemStrings[RayItem::S3] = U"S3";
-				itemStrings[RayItem::PolEllipseX] = U"";
+				itemStrings[RayItem::PolEllipseX] = U"PolEllipseX";
 				itemStrings[RayItem::PolEllipseY] = U"PolEllipseY";
 				itemStrings[RayItem::PolEllipseZ] = U"PolEllipseZ";
 				itemStrings[RayItem::Tri_X] = U"Tri_X";

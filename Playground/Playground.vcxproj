@@ -93,6 +93,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,15 +156,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\InterpolateRaySet\KDTree.h" />
+    <ClInclude Include="..\TM25Library\ASCIIRayFile.h" />
     <ClInclude Include="..\TM25Library\ParseString.h" />
     <ClInclude Include="..\TM25Library\ReadFile.h" />
     <ClInclude Include="..\TM25Library\Timer.h" />
+    <ClInclude Include="..\TM25Library\TM25.h" />
+    <ClInclude Include="..\TM25Library\TM25Util.h" />
+    <ClInclude Include="..\TM25Library\TM25_impl.h" />
+    <ClInclude Include="..\TM25Library\Tokenize.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\InterpolateRaySet\KDTree.cpp" />
+    <ClCompile Include="..\TM25Library\ASCIIRayFile.cpp" />
     <ClCompile Include="..\TM25Library\ParseString.cpp" />
     <ClCompile Include="..\TM25Library\ReadFile.cpp" />
     <ClCompile Include="..\TM25Library\Timer.cpp" />
+    <ClCompile Include="..\TM25Library\TM25.cpp" />
+    <ClCompile Include="..\TM25Library\TM25Util.cpp" />
+    <ClCompile Include="..\TM25Library\Tokenize.cpp" />
     <ClCompile Include="Playground.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

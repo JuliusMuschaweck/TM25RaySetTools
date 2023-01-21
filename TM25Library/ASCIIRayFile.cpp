@@ -40,8 +40,8 @@ namespace TM25
 		std::vector<std::string> header_;
 		std::vector<std::string> footer_;
 		std::vector<float> data_;
-		size_t nItems_ = 0;
-		size_t nRays_ = 0;
+		size_t nItems_;
+		size_t nRays_;
 
 		std::pair<float, float> MinMaxColValue(size_t column)
 			{
@@ -55,6 +55,7 @@ namespace TM25
 				if (f < rv.first) rv.first = f;
 				if (f > rv.second) rv.second = f;
 				}
+			return rv;
 			}
 		void SwapColumns(size_t lhs, size_t rhs)
 			{
@@ -65,10 +66,11 @@ namespace TM25
 			}
 		};
 
-
-	TRawASCIIRaySetContent ReadRawASCIIRaySet(const std::string& fn)
+	TRawASCIIRaySetContent ReadRawASCIIRaySet(const std::string& fn, size_t minHeaderLines)
 		{
 		TRawASCIIRaySetContent rv;
+		rv.nItems_ = rv.nRays_ = 0;
+
 		TReadFile f(fn);
 		float nan = std::numeric_limits<float>::signaling_NaN();
 		std::array<float, 8> ray{ nan, nan, nan, nan, nan, nan, nan, nan };
@@ -77,7 +79,8 @@ namespace TM25
 		// read header lines, if any, detect first ray and its nItems
 		while (!f.AtEof())
 			{
-			if (IsRayLine(f.ReadLine(buf), ray, nItems))
+			f.ReadLine(buf);
+			if ((rv.header_.size() >= minHeaderLines) && IsRayLine(buf, ray, nItems))
 				{
 				AppendRawRay(rv.data_, ray, nItems);
 				rv.nRays_ = 1;
@@ -85,8 +88,7 @@ namespace TM25
 				}
 			else
 				{
-				if (!buf.empty())
-					rv.header_.push_back(buf);
+				rv.header_.push_back(buf);
 				}
 			}
 		// now header is complete and first ray is read
@@ -103,8 +105,7 @@ namespace TM25
 				}
 			else
 				{
-				if (!buf.empty())
-					rv.footer_.push_back(buf);
+				rv.footer_.push_back(buf);
 				break;
 				}
 			}
@@ -128,7 +129,7 @@ namespace TM25
 		// The ASCII header and footer content will be in additional_info_4_7_3_8
 		// Spectral data identifier will be 0 (no wavelength) or 2 (wavelength per ray)
 		{
-		TRawASCIIRaySetContent rawdata = ReadRawASCIIRaySet(fn);
+		TRawASCIIRaySetContent rawdata = ReadRawASCIIRaySet(fn, opts.minHeaderLines);
 		TTM25Header header;
 		header.n_rays_4_7_1_6 = rawdata.nRays_;
 		header.file_date_time_str_4_7_1_7 = currentISO8601TimeUTC();
@@ -146,19 +147,19 @@ namespace TM25
 			auto minmax = rawdata.MinMaxColValue(7);
 			header.lambda_min_4_7_1_11 = minmax.first;
 			header.lambda_max_4_7_1_12 = minmax.second;
-			std::basic_ostringstream<std::u32string::value_type> s32;
-			s32 << U"Raw ASCII ray file read from " << ToU32String(fn) << std::endl;
-			s32 << U"Header:" << std::endl;
-			for (const auto& hline : rawdata.header_)
-				s32 << ToU32String(hline) << std::endl;
-			s32 << std::endl << U"Footer:" << std::endl;
-			for (const auto& fline : rawdata.footer_)
-				s32 << ToU32String(fline) << std::endl;
 			}
-		
+		std::basic_ostringstream<char32_t> s32;
+		s32 << U"Raw ASCII ray file read from " << ToU32String(fn) << std::endl;
+		s32 << U"Header:" << std::endl;
+		for (const auto& hline : rawdata.header_)
+			s32 << ToU32String(hline) << std::endl;
+		s32 << std::endl << U"Footer:" << std::endl;
+		for (const auto& fline : rawdata.footer_)
+			s32 << ToU32String(fline) << std::endl;
+		header.additional_info_4_7_3_8 = s32.str();
 		TDefaultRayArray rays(rawdata.nRays_, rawdata.nItems_, std::move(rawdata.data_));
 		TTM25RaySet rv(header, std::move(rays));
 		return rv;
 		}
 
-	}
+	} // namespace TM25

@@ -11,6 +11,7 @@ namespace TM25
 		int wavelengthColumn_ = 7; // 8th column -- zero based index
 		enum class WLU {nanometer, micrometer};
 		WLU wavelengthUnit_ = WLU::nanometer;
+		size_t minHeaderLines = 0; // no of starting lines that will be considered header no matter what's in them.
 		};
 
 	TTM25RaySet ReadGenericASCIIRaySet(const std::string& fn, TASCIIRaySetOptions opts);

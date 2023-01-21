@@ -180,7 +180,6 @@ class TConfiguration
 		std::map<std::string, TSection> sections_; // default: empty Variables section
 		bool unknownSectionsAllowed_;
 		std::stringstream cfgContent_;
-
 	};
 
 void TestConfiguration();

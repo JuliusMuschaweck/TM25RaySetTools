@@ -194,7 +194,7 @@ bool IsOneOf(const TToken & tok, std::vector<Token> toks)
 
 std::string TestTokenize()
 	{
-	std::string s1 = "[](){};, \"stringwith'quote'\" 'stringwith\"doublequotes\"' =+-*/ horst _horst H0 10 10. 10.0 1e+1 1e+a";
+	std::string s1 = std::string("[](){};, ") + '"'+ "stringwith'quote'" + '"'+ " 'stringwith"+'"'+"doublequotes"+'"' + "' = +-*/ horst _horst H0 10 10. 10.0 1e+1 1e + a";
 	std::string s2 = "+- true false %comment";
 	std::string s3 = "%comment";
 	std::string s4 = "\"noclosingdq";
@@ -203,7 +203,7 @@ std::string TestTokenize()
 
 	std::string somevar = "'some string' horst";
 	std::string s7 = "somevar 10 somevar 20";
-	std::string s8 = "-1,-sin(0);-2+3.0*sin(pi()/6); atan2(1,0)/pi(); 4.0-1.0, if(true,1,0); min(1,4,-exp(1)), max(1,4.0)";
+	std::string s8 = "-1,-1+2+3,1+2+3,-sin(0);-2+3.0*sin(pi()/6); atan2(1,0)/pi(); 4.0-1.0, if(true,1,0); min(1,4,-exp(1)), max(1,4.0)";
 	try
 		{
 		

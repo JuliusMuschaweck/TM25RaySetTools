@@ -31,7 +31,7 @@ namespace TM25
 		Tri_X = 15, Tri_Z = 16, spectrumIdx = 17, additional = 18
 		};
 
-	constexpr size_t nStdItems = 15;
+	constexpr size_t nStdItems = 18;
 
 	std::u32string RayItemToString(RayItem ri); 
 	// returns U"x", U"y", .. U"additional" 
