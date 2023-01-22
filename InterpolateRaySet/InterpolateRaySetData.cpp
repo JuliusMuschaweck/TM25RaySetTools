@@ -57,6 +57,7 @@ void TInterpolateRaySetData::SetTotalFlux(float newTotalFlux)
 		l = static_cast<float>(static_cast<double>(l) * fac);
 	for (auto& c : cellFluxes_)
 		c = static_cast<float>(static_cast<double>(c) * fac);
+	totalFlux_ = newTotalFlux;
 	}
 
 // sort v, but return index of permutation instead of modifying v

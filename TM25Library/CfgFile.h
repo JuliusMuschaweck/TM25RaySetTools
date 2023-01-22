@@ -196,6 +196,9 @@ template<typename TRV, Token Tok>
 TRV TSection::GetSingleTokenValue(const std::string& valueName) const
 	{
 	const TTokenSequence& v = Value(valueName);
+	if (v.size() == 1)
+		throw std::runtime_error("TSection::GetSingleTokenValue: value missing for entry " + valueName
+			+ " in section " + name_);
 	if (v.size() != 2)
 		throw std::runtime_error("TSection::GetSingleTokenValue: token sequence too long for value " + valueName
 		+ " in section " + name_);

@@ -152,28 +152,34 @@ void PrepareRaySetData(TInterpolateRaySetData& interpRaySetData, const TSection&
 
 void WriteCharacteristicCurve(const TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS)
 	{
+	if (rsc.IsEmpty("characteristicCurveFileName"))
+		{
+		logS << "no characteristicCurveFileName given\n";
+		return;
+		}
 	std::string fn = rsc.String("characteristicCurveFileName");
 	logS << "Writing characteristic curve to " << fn << "\n";
-	if (!rsc.IsEmpty("characteristicCurveFileName"))
-		interpRaySetData.WriteCharacteristicCurve(fn,
+	interpRaySetData.WriteCharacteristicCurve(fn,
 			interpRaySetData.CharacteristicCurve());
 	}
 
 void WriteSkewnessDistribution(const TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS, const TM25::TTM25RaySet& rs)
 	{
-	if (!rsc.IsEmpty("skewness_z_FileName"))
+	if (rsc.IsEmpty("skewness_z_FileName"))
 		{
-		size_t nBins = rsc.Int("skewness_nBins");
-		std::string fn = rsc.String("skewness_z_FileName");
-		std::string bts = rsc.Keyword("skewness_binType");
-		logS << "Writing skewness data of type "<<bts<<" to " << fn << "\n";
-		TInterpolateRaySetData::TSkewnessDistribution::BinType binType = interpRaySetData.BinTypeFromString(bts);
-		TInterpolateRaySetData::TSkewnessDistribution sd = interpRaySetData.SkewnessDistribution_z_axis(nBins, binType, rs);
-		interpRaySetData.WriteSkewnessDistribution_z_axis(fn, sd);
+		logS << "no skewness_z_FileName given\n";
+		return;
 		}
+	std::string fn = rsc.String("skewness_z_FileName");
+	size_t nBins = rsc.Int("skewness_nBins");
+	std::string bts = rsc.Keyword("skewness_binType");
+	logS << "Writing skewness data of type "<<bts<<" to " << fn << "\n";
+	TInterpolateRaySetData::TSkewnessDistribution::BinType binType = interpRaySetData.BinTypeFromString(bts);
+	TInterpolateRaySetData::TSkewnessDistribution sd = interpRaySetData.SkewnessDistribution_z_axis(nBins, binType, rs);
+	interpRaySetData.WriteSkewnessDistribution_z_axis(fn, sd);
 	}
 
-TM25::TDefaultRayArray ComputeInterpolatedRays(TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS, const TM25::TTM25RaySet& rs)
+TM25::TDefaultRayArray ComputeInterpolatedRays(const TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS, const TM25::TTM25RaySet& rs)
 	{
 	// now we have an array of rays, a corresponding array of points in phase space, and corresponding arrays of volumes, fluxes and luminances. 
 	// we also have the KD tree structure which gives us a phase space bounding box for each ray.
@@ -260,13 +266,21 @@ TM25::TDefaultRayArray ComputeInterpolatedRays(TInterpolateRaySetData& interpRay
 
 
 void WriteInterpolatedRayFile(const TSection& rsc, TLogPlusCout& logS, const TM25::TTM25RaySet& rs, 
-		TM25::TDefaultRayArray&& rayArray)
+		const TInterpolateRaySetData& interpRaySetData)
 	{
+	if (rsc.IsEmpty("outputRayFileName"))
+		{
+		logS << "no outputRayFileName given\n";
+		return;
+		}
+
+	std::string fn = rsc.String("outputRayFileName");
+	TM25::TDefaultRayArray rayArray = ComputeInterpolatedRays(interpRaySetData, rsc, logS, rs);
 	TM25::TTM25Header header = rs.Header();
 	header.n_rays_4_7_1_6 = rayArray.NRays();
 	TM25::TTM25RaySet interpolatedRaySet(header, std::move(rayArray));
 
-	logS << "writing " << header.n_rays_4_7_1_6 << " rays to TM25 ray file " << rsc.String("outputRayFileName");
+	logS << "writing " << header.n_rays_4_7_1_6 << " rays to TM25 ray file " << fn;
 
 
 	interpolatedRaySet.Write(rsc.String("outputRayFileName"));
@@ -289,6 +303,12 @@ void WriteInterpolatedRayFile(const TSection& rsc, TLogPlusCout& logS, const TM2
 
 void WriteLuminanceLookupTable(TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS)
 	{
+	if (rsc.IsEmpty("LuminanceLookupTable_FileName"))
+		{
+		logS << "no LuminanceLookupTable_FileName given\n";
+		return;
+		}
+	std::string fn = rsc.String("LuminanceLookupTable_FileName");
 	double xmin = rsc.Real("LuminanceLookupTable_xmin");
 	double xmax = rsc.Real("LuminanceLookupTable_xmax");
 	double ymin = rsc.Real("LuminanceLookupTable_ymin");
@@ -310,7 +330,6 @@ void WriteLuminanceLookupTable(TInterpolateRaySetData& interpRaySetData, const T
 	logS << "computing luminance interpolation table with " << xyPoints * xyPoints * kxkyPoints * kxkyPoints << " entries\n";
 	TPhaseSpaceGrid<float> grid = FillPhaseSpaceGrid(boundingBox, interpRaySetData, bins);
 
-	std::string fn = rsc.String("LuminanceLookupTable_FileName");
 	logS << "writing luminance interpolation table to file " << fn << "\n";
 	TM25::TWriteFile f(fn);
 	f.Write<TPhaseSpaceGrid<float>::T4DPoint>(grid.bbmin_);
@@ -358,24 +377,19 @@ int main(int argc, char* argv[])
 		TInterpolateRaySetData interpRaySetData;
 		PrepareRaySetData(interpRaySetData, rsc, logS, rs);
 
+		// the following routines do nothing except a message if the corresponding file name is not given in cfg file.
+
 		// interesting but not needed to generate either large ray sets or luminance lookup tables
 		WriteCharacteristicCurve(interpRaySetData, rsc, logS);
 		WriteSkewnessDistribution(interpRaySetData, rsc, logS, rs);
 
 		// generate as many "interpolated" rays as you like -- not needed to generate luminance lookup tables
-		if (!rsc.IsEmpty("outputRayFileName"))
-			{
-			TM25::TDefaultRayArray rayArray = ComputeInterpolatedRays(interpRaySetData, rsc, logS, rs);
-			// currently only in TM25, but writing to Zemax Binary is easy to hook up
-			WriteInterpolatedRayFile(rsc, logS, rs, std::move(rayArray));
-			}
+		// currently only in TM25, but writing to Zemax Binary is easy to hook up
+		WriteInterpolatedRayFile(rsc, logS, rs, interpRaySetData);
 		
 		// compute average luminance values on a regular grid in phase space
 		// and write to binary output file
-		if (!rsc.IsEmpty("LuminanceLookupTable_FileName"))
-			{
-			WriteLuminanceLookupTable(interpRaySetData, rsc, logS);
-			}
+		WriteLuminanceLookupTable(interpRaySetData, rsc, logS);
 		}
 	catch (TM25::TM25Error e)
 		{

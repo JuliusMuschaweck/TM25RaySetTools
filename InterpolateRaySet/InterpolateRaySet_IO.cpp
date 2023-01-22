@@ -10,6 +10,8 @@ TM25::TTM25RaySet ReadRaySet(const TInterpolateRaySetCfg& cfg, std::ostream& inf
 	{
 	const TSection& rsc = cfg.Section("RaySetControl");
 	TM25::TTM25RaySet rs;
+	if (rsc.IsEmpty("inputRayFileName"))
+		throw std::runtime_error("inputRayFileName must be supplied");
 	const std::string format = rsc.String("inputRayFileFormat");
 	const std::string fn = rsc.String("inputRayFileName");
 	if (format.compare("TM25") == 0)

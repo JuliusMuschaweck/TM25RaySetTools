@@ -47,7 +47,7 @@ TPhaseSpaceGrid<float> FillPhaseSpaceGrid(const TPhaseSpaceGrid<float>::TBox& bo
 	// we assign the corresponding luminance to each box
 
 	// grid step sizes
-	float dx0 = (boundingBox.second[0] - boundingBox.first[0]) / nBins[0];
+ 	float dx0 = (boundingBox.second[0] - boundingBox.first[0]) / nBins[0];
 	float dx1 = (boundingBox.second[1] - boundingBox.first[1]) / nBins[1];
 	float dk0 = (boundingBox.second[2] - boundingBox.first[2]) / nBins[2];
 	float dk1 = (boundingBox.second[3] - boundingBox.first[3]) / nBins[3];
@@ -70,7 +70,9 @@ TPhaseSpaceGrid<float> FillPhaseSpaceGrid(const TPhaseSpaceGrid<float>::TBox& bo
 		};
 
 	TPhaseSpaceGrid<float> rv(gridBB0, gridBB1, nBins);
+
 	size_t maxpts = 0;
+	size_t nNonzero = 0;
 	for (size_t ix0 = 0; ix0 < nBins[0]; ++ix0)
 		{
 		std::cout << "FillPhaseSpaceGrid: ix0 = " << ix0 << " of " << nBins[0] << '\n';
@@ -88,17 +90,37 @@ TPhaseSpaceGrid<float> FillPhaseSpaceGrid(const TPhaseSpaceGrid<float>::TBox& bo
 						Def::TKDPoint{ thisx0, thisx1, thisk0, thisk1 },
 						Def::TKDPoint{ thisx0 + dx0, thisx1 + dx1, thisk0 + dk0, thisk1 + dk1 }
 					);
-					// Def::TPointIdxArray pts = raySetData.kdtree_->LocateOverlapping(thisBB);
-					Def::TPointIdxArray pts = raySetData.kdtree_->LocatePointsWithinBox2(thisBB);
-					if (pts.size() > maxpts) maxpts = pts.size();
-					float L = AverageLuminance(raySetData, pts);
-					float U = dx0 * dx1 * dk0 * dk1; // the etendue of this box
-					// float L = TotalFlux(raySetData, pts) / U;
-					rv.Value({ ix0, ix1, ik0, ik1 }) = L;
+					//// Def::TPointIdxArray pts = raySetData.kdtree_->LocateOverlapping(thisBB);
+					//Def::TPointIdxArray pts = raySetData.kdtree_->LocatePointsWithinBox(thisBB);
+					//if (pts.size() > maxpts) maxpts = pts.size();
+					//float L = AverageLuminance(raySetData, pts);
+					//float U = dx0 * dx1 * dk0 * dk1; // the etendue of this box
+					//// float L = TotalFlux(raySetData, pts) / U;
+					const TKDTree& kdt = *(raySetData.kdtree_);
+					Def::TNodeIdxArray overlappingLeafNodes = kdt.LocateOverlappingLeafNodes(thisBB);
+					if (overlappingLeafNodes.empty())
+						rv.Value({ ix0, ix1, ik0, ik1 }) = 0;
+					else
+						{
+						if (maxpts < overlappingLeafNodes.size())
+							maxpts = overlappingLeafNodes.size();
+						Def::TPointIdxArray pts;
+						for (auto ni : overlappingLeafNodes)
+							{
+							Def::TIdxIdx ii = kdt.Node(ni).beginpt_;
+							pts.push_back(kdt.Index(ii));
+							}
+						float L = AverageLuminance(raySetData, pts);
+						rv.Value({ ix0, ix1, ik0, ik1 }) = L;
+						++nNonzero;
+						}
 					}
 				}
 			}
 		}
 	std::cout << "FillPhaseSpaceGrid: max # of points per box = " << maxpts << '\n';
-	return rv;
+
+	std::cout << "FillPhaseSpaceGrid: nonzero boxes = " << nNonzero << " out of " << rv.v_.size() <<'\n';
+
+ 	return rv;
 	}

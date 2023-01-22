@@ -32,6 +32,7 @@ class TPhaseSpaceGrid
 		size_t nk0_;
 		size_t nk1_;
 		// the values on the grid, in row major x0, x1, k0, k1 index
+		
 		std::vector<Real> v_;
 	};
 
@@ -61,7 +62,10 @@ R TPhaseSpaceGrid<R>::Value(const T4DIndex& nn) const
 	if (nn[0] >= nx0_ || nn[1] >= nx1_ || nn[2] >= nk0_ || nn[3] >= nk1_)
 		throw std::runtime_error("TPhaseSpaceGrid<R>::Real: index out of bounds");
 	#endif // !NDEBUG
-	size_t i = nn[0] + nx0_ * (nn[1] + nx1_ * (nn[2] + nk0_ * nn[3]));
+	// correct: size_t i = nn[3] + nk1_ * nn[2] + nk1_ * nk0_ * nn[1] + nk1_ * nk0_ * nx1_ * nn[0];
+	// correct but faster:
+	size_t i = nn[3] + nk1_ * (nn[2] + nk0_ * (nn[1] + nx1_ * nn[0]));
+	// wrong: size_t i = nn[0] + nx0_ * (nn[1] + nx1_ * (nn[2] + nk0_ * nn[3]));
 	return v_[i];
 	}
 
@@ -72,7 +76,10 @@ R&  TPhaseSpaceGrid<R>::Value(const T4DIndex& nn)
 	if (nn[0] >= nx0_ || nn[1] >= nx1_ || nn[2] >= nk0_ || nn[3] >= nk1_)
 		throw std::runtime_error("TPhaseSpaceGrid<R>::Real: index out of bounds");
 	#endif // !NDEBUG
-	size_t i = nn[0] + nx0_ * (nn[1] + nx1_ * (nn[2] + nk0_ * nn[3]));
+	// correct: size_t i = nn[3] + nk1_ * nn[2] + nk1_ * nk0_ * nn[1] + nk1_ * nk0_ * nx1_ * nn[0];
+	// correct but faster:
+	size_t i = nn[3] + nk1_ * (nn[2] + nk0_ * (nn[1] + nx1_ * nn[0]));
+	// wrong: size_t i = nn[0] + nx0_ * (nn[1] + nx1_ * (nn[2] + nk0_ * nn[3]));
 	return v_[i];
 	}
 
