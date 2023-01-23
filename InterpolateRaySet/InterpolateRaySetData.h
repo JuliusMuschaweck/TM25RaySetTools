@@ -19,7 +19,7 @@
 struct TInterpolateRaySetData
 	{
 	template<typename PhaseSpace>
-	void Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, TLogPlusCout& info);
+	void Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, KDTree::Def::TIdx nClip, TLogPlusCout& info);
 
 	void SetTotalFlux(float newTotalFlux);
 
@@ -64,6 +64,7 @@ struct TInterpolateRaySetData
 	private:
 		template<typename PhaseSpace>
 		void CreateTree(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, std::ostream& info);
+		void Clip(KDTree::Def::TIdx nClip);
 
 		using TVec = std::vector<float>;
 		using TThreeVecs = std::tuple<TVec, TVec, TVec>;
@@ -76,7 +77,7 @@ struct TInterpolateRaySetData
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 template<typename PhaseSpace>
-void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, TLogPlusCout& info)
+void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, KDTree::Def::TIdx nClip, TLogPlusCout& info)
 	{
 	CreateTree(ps, rs, info);
 	info << "averaging luminance over " << nNeighbors << " nearest neighbors\n ";
@@ -164,6 +165,13 @@ void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet&
 			}
 		}
 	info << "\n";
+
+	if (nClip > 0)
+		{
+		info << "clipping luminance of " << nClip << " brightest cells\n";
+		Clip(nClip);
+		}
+
 	totalVolume_ = std::accumulate(volumes_.begin(), volumes_.end(), 0.0f);
 	totalFlux_ = std::accumulate(rayFluxes_.begin(), rayFluxes_.end(), 0.0f);
 	avgLuminance_ = totalFlux_ / totalVolume_;

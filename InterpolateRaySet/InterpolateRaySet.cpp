@@ -127,22 +127,24 @@ void PrepareRaySetData(TInterpolateRaySetData& interpRaySetData, const TSection&
 	{
 	std::string pstype = rsc.Keyword("phaseSpaceType");
 	logS << "preparing phase space of type " << pstype << "\n";
+	int nClip = rsc.Int("nClip");
+	int nNeighbors = rsc.Int("nNeighbors");
 	if (pstype.compare("VirtualFocusZSphere") == 0)
 		{
 		TZAxisStereographicSphericalPhaseSpace<float> ps = CreateZAxisSphericalPhaseSpace(rs);
-		interpRaySetData.Init(ps, rs, rsc.Int("nNeighbors"), logS);
+		interpRaySetData.Init(ps, rs, nNeighbors, nClip, logS);
 		}
 	else if (pstype.compare("ZPlane") == 0)
 		{
 		double z0 = rsc.Real("ZPlane_z");
 		TPlanarZPhaseSpace<float> ps(static_cast<float>(z0));
-		interpRaySetData.Init(ps, rs, rsc.Int("nNeighbors"), logS);
+		interpRaySetData.Init(ps, rs, nNeighbors, nClip, logS);
 		}
 	else if (pstype.compare("ZCylinder") == 0)
 		{
 		double radius = rsc.Real("ZCylinderRadius");
 		TCylinderZPhaseSpace<float> ps(static_cast<float>(radius));
-		interpRaySetData.Init(ps, rs, rsc.Int("nNeighbors"), logS);
+		interpRaySetData.Init(ps, rs, nNeighbors, nClip, logS);
 		}
 	else
 		throw std::runtime_error("InterpolateRaySet: no valid phase space type");
@@ -321,13 +323,15 @@ void WriteLuminanceLookupTable(TInterpolateRaySetData& interpRaySetData, const T
 	auto flt = [](double rhs) {return static_cast<float>(rhs); };
 	auto szt = [](int rhs) {return static_cast<size_t>(rhs); };
 
-	int xyPoints = rsc.Int("LuminanceLookupTable_xyPoints");
-	int kxkyPoints = rsc.Int("LuminanceLookupTable_kxkyPoints");
+	int xPoints = rsc.Int("LuminanceLookupTable_xPoints");
+	int yPoints = rsc.Int("LuminanceLookupTable_yPoints");
+	int kxPoints = rsc.Int("LuminanceLookupTable_kxPoints");
+	int kyPoints = rsc.Int("LuminanceLookupTable_kyPoints");
 	TPhaseSpaceGrid<float>::TBox boundingBox{ {flt(xmin), flt(ymin), flt(kxmin), flt(kymin)},{flt(xmax), flt(ymax), flt(kxmax), flt(kymax)} };
-	TPhaseSpaceGrid<float>::T4DIndex bins{ szt(xyPoints), szt(xyPoints), szt(kxkyPoints), szt(kxkyPoints) };
+	TPhaseSpaceGrid<float>::T4DIndex bins{ szt(xPoints), szt(yPoints), szt(kxPoints), szt(kyPoints) };
 	
 
-	logS << "computing luminance interpolation table with " << xyPoints * xyPoints * kxkyPoints * kxkyPoints << " entries\n";
+	logS << "computing luminance interpolation table with " << xPoints * yPoints * kxPoints * kyPoints << " entries\n";
 	TPhaseSpaceGrid<float> grid = FillPhaseSpaceGrid(boundingBox, interpRaySetData, bins);
 
 	logS << "writing luminance interpolation table to file " << fn << "\n";
@@ -403,5 +407,5 @@ int main(int argc, char* argv[])
 	//	{
 	//	std::cout << "unknown error" << std::endl;
 	//	}
-	return 0;
+ 	return 0;
  	}

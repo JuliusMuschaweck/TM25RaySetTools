@@ -38,9 +38,10 @@ TM25::TTM25RaySet ReadRaySet(const TInterpolateRaySetCfg& cfg, std::ostream& inf
 		TM25::TASCIIRaySetOptions opts;
 		opts.minHeaderLines = 1;
 		opts.wavelengthUnit_ = TM25::TASCIIRaySetOptions::WLU::micrometer;
-		TM25::TTM25RaySet rs = TM25::ReadGenericASCIIRaySet(fn, opts);
 		rs = TM25::ReadGenericASCIIRaySet(fn, opts);
 		}
+	else
+		throw std::runtime_error("unknown input ray file format: " + format);
 	return rs;
 	}
 

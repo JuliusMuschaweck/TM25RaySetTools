@@ -15,6 +15,7 @@ void TRaySetControlSection::AddAllowedValues()
 	values_.insert({ "restrictToKz",		MakeEmptyTokenSequence() });
 	values_.insert({ "restrictToXYBox",		MakeEmptyTokenSequence() });
 	values_.insert({ "restrictToFirstNRays",		MakeEmptyTokenSequence() });
+	values_.insert({ "nClip",				MakeDefaultValueTokenSequence<Token::integer>(0) });
 	values_.insert({ "nOutputRays",			MakeDefaultValueTokenSequence<Token::integer>(1) });
 	values_.insert({ "nNeighbors",			MakeDefaultValueTokenSequence<Token::integer>(10) });
 	values_.insert({ "outputRayFileName",	MakeEmptyTokenSequence() });
@@ -36,8 +37,10 @@ void TRaySetControlSection::AddAllowedValues()
 	values_.insert({ "LuminanceLookupTable_kxmax", MakeEmptyTokenSequence() });
 	values_.insert({ "LuminanceLookupTable_kymin", MakeEmptyTokenSequence() });
 	values_.insert({ "LuminanceLookupTable_kymax", MakeEmptyTokenSequence() });
-	values_.insert({ "LuminanceLookupTable_xyPoints", MakeEmptyTokenSequence() });
-	values_.insert({ "LuminanceLookupTable_kxkyPoints", MakeEmptyTokenSequence() });
+	values_.insert({ "LuminanceLookupTable_xPoints", MakeEmptyTokenSequence() });
+	values_.insert({ "LuminanceLookupTable_yPoints", MakeEmptyTokenSequence() });
+	values_.insert({ "LuminanceLookupTable_kxPoints", MakeEmptyTokenSequence() });
+	values_.insert({ "LuminanceLookupTable_kyPoints", MakeEmptyTokenSequence() });
 	values_.insert({ "someRealVector", MakeEmptyTokenSequence() });
 	values_.insert({ "someIntVector", MakeEmptyTokenSequence() });
 	}

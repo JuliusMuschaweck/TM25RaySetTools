@@ -14,6 +14,8 @@ or http://unlicense.org/
 #include <string>
 #include <array>
 #include <vector>
+#include <numeric>
+#include <algorithm>
 
 namespace TM25
 	{
@@ -31,7 +33,10 @@ namespace TM25
 
 	std::u32string ToU32String(const std::string& s);
 
-
+	// sort v, but return index of permutation instead of modifying v
+	// postcondition: i < j => v[rv[i]] <= v[rv[j]]
+	template<typename Compare = decltype(std::less())>
+	std::vector<size_t> IndexSort(const std::vector<float>& v, Compare comp = std::less());
 
 // template definitions
 
@@ -61,6 +66,18 @@ namespace TM25
 			else
 				break;
 			}
+		}
+
+	// sort v, but return index of permutation instead of modifying v
+	// postcondition: i < j => v[rv[i]] <= v[rv[j]]
+	template<typename Compare>
+	std::vector<size_t> IndexSort(const std::vector<float>& v, Compare comp)
+		{
+		std::vector<size_t> rv(v.size());
+		std::iota(rv.begin(), rv.end(), 0);
+		auto pred = [&v, comp](size_t lhs, size_t rhs) -> bool {return comp(v[lhs], v[rhs]); };
+		std::sort(rv.begin(), rv.end(), pred);
+		return rv;
 		}
 
 	}

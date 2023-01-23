@@ -1,6 +1,6 @@
 #include "InterpolateRaySetData.h"
 #include <sstream>
-
+#include <TM25Util.h>
 
 
 TInterpolateRaySetData::TThreeVecs TInterpolateRaySetData::ComputeLumRange(size_t ibegin, size_t iend, KDTree::Def::TIdx nNeighbors) const
@@ -60,17 +60,6 @@ void TInterpolateRaySetData::SetTotalFlux(float newTotalFlux)
 	totalFlux_ = newTotalFlux;
 	}
 
-// sort v, but return index of permutation instead of modifying v
-// postcondition: i < j => v[rv[i]] <= v[rv[j]]
-template<typename Compare = decltype(std::less())>
-std::vector<size_t> IndexSort(const std::vector<float>& v, Compare comp = std::less())
-	{
-	std::vector<size_t> rv(v.size());
-	std::iota(rv.begin(), rv.end(), 0);
-	auto pred = [&v, comp](size_t lhs, size_t rhs) -> bool {return comp(v[lhs], v[rhs]); };
-	std::sort(rv.begin(), rv.end(), pred);
-	return rv;
-	}
 
 #ifdef NDEBUG
 #pragma optimize("",off)
@@ -78,7 +67,7 @@ std::vector<size_t> IndexSort(const std::vector<float>& v, Compare comp = std::l
 TInterpolateRaySetData::TCharacteristicCurve TInterpolateRaySetData::CharacteristicCurve() const
 	{
 	// sort descending
-	std::vector<size_t> idx = IndexSort(luminances_, std::greater());
+	std::vector<size_t> idx = TM25::IndexSort(luminances_, std::greater());
 	TCharacteristicCurve rv;
 	size_t nCells = idx.size();
 	rv.etendue_.reserve(nCells);
@@ -159,7 +148,7 @@ TInterpolateRaySetData::TSkewnessDistribution TInterpolateRaySetData::SkewnessDi
 		std::tuple<TVec3f, TVec3f, float> iray = rs.RayLocDirFlux(i);
 		raw_skewness.push_back(s(std::get<0>(iray), std::get<1>(iray)));
 		}
-	std::vector<size_t> s_idx = IndexSort(raw_skewness);
+	std::vector<size_t> s_idx = TM25::IndexSort(raw_skewness);
 	std::vector<float> sorted_skewness;
 	sorted_skewness.reserve(nRays);
 	for (size_t i : s_idx)
@@ -222,6 +211,23 @@ void TInterpolateRaySetData::WriteSkewnessDistribution_z_axis(const std::string&
 	f.WriteVector(cc.skewness_);
 	f.WriteVector(cc.dU_ds_);
 	f.WriteVector(cc.dPhi_ds_);
+	}
+
+void TInterpolateRaySetData::Clip(KDTree::Def::TIdx nClip)
+	{
+	// sort descending
+	if (nClip >= luminances_.size())
+		throw std::runtime_error("Clip: nClip >= # of rays");
+	std::vector<size_t> idx = TM25::IndexSort(luminances_, std::greater());
+	float threshold = luminances_[idx[nClip]];
+	for (size_t i = 0; i < nClip; ++i)
+		{
+		luminances_[idx[i]] = threshold;
+		rayFluxes_[idx[i]] = threshold * volumes_[idx[i]];
+		}
+	totalVolume_ = std::accumulate(volumes_.begin(), volumes_.end(), 0.0f);
+	totalFlux_ = std::accumulate(rayFluxes_.begin(), rayFluxes_.end(), 0.0f);
+	avgLuminance_ = totalFlux_ / totalVolume_;
 	}
 
 #ifdef NDEBUG
