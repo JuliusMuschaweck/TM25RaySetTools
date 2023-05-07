@@ -29,13 +29,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -48,7 +48,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\TM25ReadWrite;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -84,7 +84,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\TM25ReadWrite;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -159,23 +159,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\TM25ReadWrite\ReadFile.cpp" />
-    <ClCompile Include="..\TM25ReadWrite\TestLinAlg.cpp" />
-    <ClCompile Include="..\TM25ReadWrite\TM25.cpp" />
-    <ClCompile Include="..\TM25ReadWrite\TM25Util.cpp" />
-    <ClCompile Include="..\TM25ReadWrite\WriteFile.cpp" />
+    <ClCompile Include="..\TM25Library\ReadASAPRaySet.cpp" />
+    <ClCompile Include="..\TM25Library\ReadFile.cpp" />
+    <ClCompile Include="..\TM25Library\TestLinAlg.cpp" />
+    <ClCompile Include="..\TM25Library\TM25.cpp" />
+    <ClCompile Include="..\TM25Library\TM25Util.cpp" />
+    <ClCompile Include="..\TM25Library\WriteFile.cpp" />
     <ClCompile Include="ConvertASAPToTM25.cpp" />
-    <ClCompile Include="ReadASAPRaySet.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\TM25ReadWrite\LinAlg3.h" />
-    <ClInclude Include="..\TM25ReadWrite\ReadFile.h" />
-    <ClInclude Include="..\TM25ReadWrite\TM25.h" />
-    <ClInclude Include="..\TM25ReadWrite\TM25Util.h" />
-    <ClInclude Include="..\TM25ReadWrite\TM25_impl.h" />
-    <ClInclude Include="..\TM25ReadWrite\WriteFile.h" />
-    <ClInclude Include="ReadASAPRaySet.h" />
-    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="..\TM25Library\LinAlg3.h" />
+    <ClInclude Include="..\TM25Library\ReadASAPRaySet.h" />
+    <ClInclude Include="..\TM25Library\ReadFile.h" />
+    <ClInclude Include="..\TM25Library\Timer.h" />
+    <ClInclude Include="..\TM25Library\TM25.h" />
+    <ClInclude Include="..\TM25Library\TM25Util.h" />
+    <ClInclude Include="..\TM25Library\TM25_impl.h" />
+    <ClInclude Include="..\TM25Library\WriteFile.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

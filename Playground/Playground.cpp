@@ -1,3 +1,4 @@
+//
 // Playground.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
@@ -7,6 +8,10 @@
 #include <array>
 #include <vector> 
 #include "../InterpolateRaySet/KDTree.h"
+#include <ParseString.h>
+#include <ReadFile.h>
+#include <ASCIIRayFile.h>
+#include <Tokenize.h>
 
 void TestBuf()
 	{
@@ -21,13 +26,47 @@ void TestBuf()
 
 int main()
 {
-    std::cout << "Hello World!\n"; 
+	KDTree::TestKDTree4D();
+	TestTokenize();
+	
+	std::string fn = "../TestRayFiles/ZemaxText.txt";
+	TM25::TASCIIRaySetOptions opts;
+	opts.minHeaderLines = 1;
+	opts.wavelengthUnit_ = TM25::TASCIIRaySetOptions::WLU::micrometer;
+	TM25::TTM25RaySet rs = TM25::ReadGenericASCIIRaySet(fn, opts);
+	fn = "../TestRayFiles/ZemaxWavelengthText.txt";
+	TM25::TTM25RaySet rs2 = TM25::ReadGenericASCIIRaySet(fn, opts);
+	fn = "../TestRayFiles/deleteme.txt";
+	TM25::TTM25RaySet rs3 = TM25::ReadGenericASCIIRaySet(fn, opts);
+
+	auto items = SplitString(""," \t");
+	items = SplitString(" abc ", " \t");
+	items = SplitString("abc ", " \t");
+	items = SplitString(" abc", " \t");
+	items = SplitString(" abc def\tg\t h", " \t");
+
+	double d = std::stod("123.45");
+	std::vector<double> tmp;
+	std::cout << sizeof(std::vector<double>) << '\n';
+	std::cout << sizeof(std::string) << '\n';
+
+	TM25::TReadFile rf("../TM25Library/Timer.h");
+	while (!rf.AtEof())
+		{
+		std::string s = rf.ReadLine(true);
+		std::cout << s;
+		}
+
+	std::cout << "Hello World!\n";
 	if (KDTree::Def::dim == 2)
 		KDTree::TestKDTree2D("TestKDTree.m");
 	if (KDTree::Def::dim == 4)
 		KDTree::TestKDTree4D();
 	TestBuf();
 	}
+
+
+
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
 // Debug program: F5 or Debug > Start Debugging menu
