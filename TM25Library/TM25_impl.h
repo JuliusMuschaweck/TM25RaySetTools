@@ -12,6 +12,7 @@ or http://unlicense.org/
 #include <sstream>
 #include <algorithm>
 #include "TM25.h"
+#include <algorithm>
 namespace TM25
 	{
 
@@ -993,4 +994,17 @@ namespace TM25
 			std::memcpy(data_.data() + i * nItems_, ray.data(), sizeof(float) * N);
 			}
 	
+		template< typename Iter>
+		void TDefaultRayArray::SetRay(size_t i, Iter begin)
+			// copies ray into the i'th row, starting at begin, iterating over nItem floats
+			{
+			if (i >= nRays_)
+				{
+				std::stringstream s;
+				s << "TDefaultRayArray::SetRay<Iter>: i (" << i << ") >= NRays() (" << nRays_ << ")";
+				throw TM25Error(s.str());
+				}
+
+			const float* ibegin = &(*begin);
+			}
 	}
