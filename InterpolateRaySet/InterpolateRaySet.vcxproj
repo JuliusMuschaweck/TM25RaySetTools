@@ -183,6 +183,7 @@
     <ClCompile Include="InterpolateRaySetData.cpp" />
     <ClCompile Include="InterpolateRaySet_IO.cpp" />
     <ClCompile Include="KDTree.cpp" />
+    <ClCompile Include="LightToolsBinary.cpp" />
     <ClCompile Include="PhaseSpace.cpp" />
     <ClCompile Include="PhaseSpaceGrid.cpp" />
   </ItemGroup>
@@ -204,6 +205,7 @@
     <ClInclude Include="InterpolateRaySetData.h" />
     <ClInclude Include="InterpolateRaySet_IO.h" />
     <ClInclude Include="KDTree.h" />
+    <ClInclude Include="LightToolsBinary.h" />
     <ClInclude Include="PhaseSpace.h" />
     <ClInclude Include="PhaseSpaceGrid.h" />
     <ClInclude Include="PhaseSpaceImpl.h" />

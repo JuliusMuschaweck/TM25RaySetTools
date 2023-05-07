@@ -471,7 +471,15 @@ namespace KDTree
 			throw std::runtime_error("TKDTree::NearestNeighborsOfNode: inode out of range");
 		// find smallest mother box with n points
 		while (Node(inode).NPoints() < n)
-			inode = Node(inode).motherNode_;
+			{
+			if (inode.ni_ != 0)
+				inode = Node(inode).motherNode_;
+			else // root node has less than n points
+				{
+				n = Node(inode).NPoints();
+				break;
+				}
+			}
 		// now inode points to nearest box with >= n points
 		// select n nearest within this, as heap
 		const TNode& nd = Node(inode);
