@@ -3,6 +3,7 @@
 //
 
 #include "pch.h"
+#include <string>
 #include <iostream>
 #include <fstream>
 #include <array>
@@ -26,6 +27,20 @@ void TestBuf()
 
 int main()
 {
+	std::string s;
+	size_t tmp2 = sizeof(s); // 40 bytes, buffer[16]
+	std::cout << tmp2 << ' ' << (s.begin() == s.end()) << ' ' << s.capacity() <<
+		' ' << s.empty() << ' ' << sizeof(s.begin()) << ' ' << reinterpret_cast<uint64_t>(s.data()+0)
+		<< ' ' << static_cast<uint8_t>(*(s.data())) << 'x' << std::endl;
+	char* d1 = s.data();
+	const char* d3 = s.c_str();
+	std::cout << (d1 == d3) << std::endl;
+	s = "c";
+	char* d2 = s.data();
+	std::cout << (d1 == d2) << std::endl;
+	d3 = s.c_str();
+	std::cout << (d1 == d3) << std::endl;
+
 	KDTree::TestKDTree4D();
 	TestTokenize();
 	

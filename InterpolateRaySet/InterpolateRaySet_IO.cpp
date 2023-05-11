@@ -40,6 +40,13 @@ TM25::TTM25RaySet ReadRaySet(const TInterpolateRaySetCfg& cfg, std::ostream& inf
 		opts.wavelengthUnit_ = TM25::TASCIIRaySetOptions::WLU::micrometer;
 		rs = TM25::ReadGenericASCIIRaySet(fn, opts);
 		}
+	else if (format.compare("LightToolsBinary") == 0)
+		{
+		info << "Reading LightTools binary ray file " << fn << endl;
+		TM25::TZemaxRaySet zemaxRaySet(fn);
+		rs = TM25::ZemaxBinaryToTM25(zemaxRaySet);
+		}
+
 	else
 		throw std::runtime_error("unknown input ray file format: " + format);
 	return rs;
