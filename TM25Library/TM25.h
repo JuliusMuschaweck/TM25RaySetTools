@@ -301,7 +301,7 @@ namespace TM25
 			void SetRay(size_t i, const std::array<float, N>& ray);
 			// copies ray into the i'th row
 			// throws TM25Error if ray.size() != nItems or i >= nRays
-			void SetRay(size_t i, const float* begin);
+			void SetRay(size_t i, const float* begin); 
 			// copies ray into the i'th row, starting at begin, iterating over nItem floats
 			void SetItem(size_t j, const std::vector<float>& item);
 			// copies item into the j'th column
