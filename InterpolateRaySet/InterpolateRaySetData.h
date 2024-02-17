@@ -22,17 +22,21 @@ struct TInterpolateRaySetData
 	void Init(const PhaseSpace& ps, const TM25::TTM25RaySet& rs, KDTree::Def::TIdx nNeighbors, KDTree::Def::TIdx nClip, TLogPlusCout& info);
 
 	void SetTotalFlux(float newTotalFlux);
+	void RestrictToEtendueThreshold(double etendueThreshold, TLogPlusCout& logS);
+
 
 	std::unique_ptr<KDTree::TKDTree> kdtree_;
 	std::vector<float> rayFluxes_;
 	std::vector<float> volumes_;
 	std::vector<float> luminances_;
 	std::vector<float> cellFluxes_;
+	std::vector<size_t> idx_; // sort indices for luminance sorting
+	size_t idx_max_ = 0; // idx_([0 ; idx_max_ [) contain etendue up to threshold
+	double etendueThreshold_ = 0.0;
 	float totalVolume_ = 0.0f;
 	float totalFlux_ = 0.0f;
 	float avgLuminance_ = std::numeric_limits<float>::quiet_NaN();
 	mutable TThreadSafe_stdcout safeout_;
-
 	// sort cells according to luminance, result is the characteristic curve
 	struct TCharacteristicCurve // see doi:10.1117/12.615874, "Characterization of the thermodynamic quality of light sources"
 		{
@@ -175,6 +179,7 @@ void TInterpolateRaySetData::Init(const PhaseSpace& ps, const TM25::TTM25RaySet&
 	totalVolume_ = std::accumulate(volumes_.begin(), volumes_.end(), 0.0f);
 	totalFlux_ = std::accumulate(rayFluxes_.begin(), rayFluxes_.end(), 0.0f);
 	avgLuminance_ = totalFlux_ / totalVolume_;
+	idx_ = TM25::IndexSort(luminances_, std::greater());
 	}
 
 

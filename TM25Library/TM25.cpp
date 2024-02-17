@@ -655,6 +655,19 @@ namespace TM25
 				}
 			}
 		}
+	double TDefaultRayArray::TotalRayPower() const
+		{
+		double rv = 0.0;
+		size_t maxIdx = NRays();
+		for (size_t i = 0; i < maxIdx; ++i)
+			{
+			const float* r = GetRayDirect(i);
+			float p = *(r + 6);
+			rv += p;
+			}
+		return rv;
+		}
+
 	void TDefaultRayArray::SetDataDirect(const std::vector<float>& rhs, size_t confirm_nRays, size_t confirm_nItems) // rhs.size() must be nRays * nItems. 
 		{
 		if (confirm_nRays != nRays_)

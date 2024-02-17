@@ -152,6 +152,17 @@ void PrepareRaySetData(TInterpolateRaySetData& interpRaySetData, const TSection&
 		interpRaySetData.SetTotalFlux(static_cast<float>(rsc.Real("setTotalFlux")));
 	}
 
+void RestrictToEtendueThreshold(TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS)
+	{ // to be called after PrepareRaySetData
+	double etendueThreshold = rsc.Real("restrictToEtendueThreshold");
+	if (etendueThreshold <= 0)
+		{
+		logS << "no positive restrictToEtendueThreshold value given, cannot restrict to etendue limit";
+		return;
+		}
+	interpRaySetData.RestrictToEtendueThreshold(etendueThreshold, logS);
+	}
+
 void WriteCharacteristicCurve(const TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS)
 	{
 	if (rsc.IsEmpty("characteristicCurveFileName"))
@@ -198,7 +209,10 @@ TM25::TDefaultRayArray ComputeInterpolatedRays(const TInterpolateRaySetData& int
 	std::vector<KDTree::Def::TIdx> raysPerCell(nRays);
 	for (size_t i = 0; i < nRays; ++i)
 		{
-		raysPerCell[i] = static_cast<KDTree::Def::TIdx>(round(interpRaySetData.cellFluxes_[i] / interpRaySetData.totalFlux_ * nTotalRays));
+		if (nTotalRays == 0)
+			raysPerCell[i] = 1;
+		else
+			raysPerCell[i] = static_cast<KDTree::Def::TIdx>(round(interpRaySetData.cellFluxes_[i] / interpRaySetData.totalFlux_ * nTotalRays));
 		}
 	size_t totalRays = std::accumulate(raysPerCell.begin(), raysPerCell.end(), 0);
 	logS << "actual total = " << totalRays << "\n";
@@ -266,6 +280,111 @@ TM25::TDefaultRayArray ComputeInterpolatedRays(const TInterpolateRaySetData& int
 	return rayArray;
 	}
 
+TM25::TDefaultRayArray ComputeInterpolatedRays_etendueRestricted(const TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS, const TM25::TTM25RaySet& rs)
+	{
+	// now we have an array of rays, a corresponding array of points in phase space, and corresponding arrays of volumes, fluxes and luminances. 
+	// we also have the KD tree structure which gives us a phase space bounding box for each ray.
+	// we are ready to create additional rays.
+	// Two strategies: 
+	// a) constant flux rays, that is many rays for high luminance regions, few rays for low luminance regions
+	// b) constant etendue rays, that is high power rays for high luminance regions, low power rays for low luminance regions
+	// or any mixture of both. 
+	// We use strategy a) here. That is, # of rays per cell is proportional to cell flux
+	// Compute the # of rays per cell, including the one that's already in there
+	size_t nTotalRays = rsc.Int("nOutputRays");
+	logS << "computing # of rays per cell (total target = " << nTotalRays << ")\n";
+	
+	// computing total flux in etendue restricted rays
+	double accumPhi = 0;
+	for (size_t j = 0; j < interpRaySetData.idx_max_; ++j)
+		{
+		accumPhi += interpRaySetData.cellFluxes_[interpRaySetData.idx_[j]];
+		}
+	size_t nRays = rs.NRays();
+	std::vector<KDTree::Def::TIdx> raysPerCell(nRays);
+	for (size_t i = 0; i < nRays; ++i)
+		{
+		if (nTotalRays == 0)
+			raysPerCell[i] = 1;
+		else
+			raysPerCell[i] = static_cast<KDTree::Def::TIdx>(round(interpRaySetData.cellFluxes_[i] / accumPhi * nTotalRays));
+		}
+	// now set raysPerCell to zero in unwanted cells beyond etendue threshold.
+	for (size_t j = interpRaySetData.idx_max_; j < interpRaySetData.idx_.size(); ++j)
+		{
+		raysPerCell[interpRaySetData.idx_[j]] = 0;
+		}
+	size_t totalRays = std::accumulate(raysPerCell.begin(), raysPerCell.end(), 0);
+	logS << "actual total before clipping grazing rays with kx^2+ky^2 > 0.995: " << totalRays << "\n";
+	// Again, several strategies:
+	// a) Create only new rays, discarding the original ray set
+	// b) Keep the original ray set, and add new rays
+	//		i) Keep the original ray power, which will be sometimes too large if the cell is small
+	//		ii) Keep only the original ray's location and direction, and adjust its power to match the addtl rays
+	// We use b) ii) because the original ray set has some value, while the noise is reduced
+	// To distribute the rays in the cell, we subdivide the cell and put each new ray at the center of its subcell
+	// For e.g. 7 rays, we split the cell into two along dimension 0, with 4/7 and 3/7 volume each and continue down.
+	// The original ray will reside in exactly one subcell, the others are added
+
+	// Generate the additional rays per phase space
+	KDTree::Def::TKDPoints interpolatedPsPoints;
+	std::vector<float> interpolatedFluxes;
+	std::default_random_engine dre;
+	std::uniform_real_distribution<float> dr; // default [0;1] just fine
+	auto ranGen = [&dre, &dr]() -> float {return dr(dre); };
+	for (KDTree::Def::TIdx i = 0; i < nRays; ++i)
+		{
+		KDTree::Def::TIdx thisNoOfRays = raysPerCell[i];
+		if (thisNoOfRays == 0)
+			continue;
+		const KDTree::Def::TKDPoint& thisPsPoint = interpRaySetData.kdtree_->Point({ i });
+		float thisVolume = interpRaySetData.volumes_[i];
+		float thisLuminance = interpRaySetData.luminances_[i];
+		float thisFlux = interpRaySetData.cellFluxes_[i];
+		KDTree::TKDTree::TPointIdx pi{ i };
+		const KDTree::TNode& thisNode = interpRaySetData.kdtree_->Node(interpRaySetData.kdtree_->NodeIndex(pi));
+		//std::vector<KDTree::Def::TKDPoint> newPsPoints = thisNode.Partition(thisNoOfRays, thisPsPoint);
+		std::vector<KDTree::Def::TKDPoint> newPsPoints = thisNode.RandomPartition(thisNoOfRays, thisPsPoint, ranGen);
+		auto sqr = [](double x) {return x * x; };
+		const double kzmin2 = 0.005; // sqr(rsc.Real("restrictToKz"));
+		for (auto& npsp : newPsPoints)
+			{
+			// disregard rays with k0^2+k1^2>1
+			if ((1 - sqr(npsp[2]) - sqr(npsp[3])) < kzmin2)
+				continue;
+			interpolatedPsPoints.push_back(npsp);
+			interpolatedFluxes.push_back(thisFlux / thisNoOfRays);
+			}
+		}
+	// now interpolatedPsPoints and interpolatedFluxes contain all the interpolated ray information on phase space level
+		// move rays back to 3D space
+	totalRays = interpolatedFluxes.size();
+	logS << "actual total after clipping grazing rays with kx^2+ky^2 > 0.995: " << totalRays << "\n";
+	TM25::TDefaultRayArray rayArray;
+	std::string pstype = rsc.Keyword("phaseSpaceType");
+	if (pstype.compare("VirtualFocusZSphere") == 0)
+		{
+		TZAxisStereographicSphericalPhaseSpace<float>	ps = CreateZAxisSphericalPhaseSpace(rs);
+		rayArray = ComputeRayArray(ps, interpolatedPsPoints, interpolatedFluxes);
+		}
+	else if (pstype.compare("ZPlane") == 0)
+		{
+		double z0 = rsc.Real("ZPlane_z");
+		TPlanarZPhaseSpace<float> ps(static_cast<float>(z0));
+		rayArray = ComputeRayArray(ps, interpolatedPsPoints, interpolatedFluxes);
+		}
+	else if (pstype.compare("ZCylinder") == 0)
+		{
+		double radius = rsc.Real("ZCylinderRadius");
+		TCylinderZPhaseSpace<float> ps(static_cast<float>(radius));
+		rayArray = ComputeRayArray(ps, interpolatedPsPoints, interpolatedFluxes);
+		}
+	else
+		throw std::runtime_error("InterpolateRaySet: no valid phase space type");
+	return rayArray;
+	}
+
+
 
 void WriteInterpolatedRayFile(const TSection& rsc, TLogPlusCout& logS, const TM25::TTM25RaySet& rs, 
 		const TInterpolateRaySetData& interpRaySetData)
@@ -277,9 +396,14 @@ void WriteInterpolatedRayFile(const TSection& rsc, TLogPlusCout& logS, const TM2
 		}
 
 	std::string fn = rsc.String("outputRayFileName");
-	TM25::TDefaultRayArray rayArray = ComputeInterpolatedRays(interpRaySetData, rsc, logS, rs);
+	// TM25::TDefaultRayArray rayArray = ComputeInterpolatedRays(interpRaySetData, rsc, logS, rs);
+	TM25::TDefaultRayArray rayArray = ComputeInterpolatedRays_etendueRestricted(interpRaySetData, rsc, logS, rs);
 	TM25::TTM25Header header = rs.Header();
+	double totalPowerBefore = rs.TotalSelectedPower();
+	double totalPowerAfter = rayArray.TotalRayPower();
 	header.n_rays_4_7_1_6 = rayArray.NRays();
+	header.phi_4_7_1_5 *= static_cast<float>(totalPowerAfter / totalPowerBefore);
+	header.phi_v_4_7_1_4 *= static_cast<float>(totalPowerAfter / totalPowerBefore);
 	TM25::TTM25RaySet interpolatedRaySet(header, std::move(rayArray));
 
 	logS << "writing " << header.n_rays_4_7_1_6 << " rays to TM25 ray file " << fn;
@@ -303,7 +427,7 @@ void WriteInterpolatedRayFile(const TSection& rsc, TLogPlusCout& logS, const TM2
 	logS << "Maximum distance: d = " << test_rs.MaxDistance(vf) << '\n';
 	}
 
-void WriteLuminanceLookupTable(TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS)
+void WriteLuminanceLookupTable(const TInterpolateRaySetData& interpRaySetData, const TSection& rsc, TLogPlusCout& logS)
 	{
 	if (rsc.IsEmpty("LuminanceLookupTable_FileName"))
 		{
@@ -346,6 +470,7 @@ void WriteLuminanceLookupTable(TInterpolateRaySetData& interpRaySetData, const T
 		f.Write<float>(d);
 	}
 
+
 int main(int argc, char* argv[])
 	{
 	using std::cout;
@@ -378,13 +503,17 @@ int main(int argc, char* argv[])
 
 		// compute kd tree and information about rays, cells, etc-
 		// also finds nearest neighbors for each ray and computes "moving average" luminance for each ray
+		// restrict ray set to brightest rays within etendue threshold, if given
 		TInterpolateRaySetData interpRaySetData;
 		PrepareRaySetData(interpRaySetData, rsc, logS, rs);
 
+		RestrictToEtendueThreshold(interpRaySetData, rsc, logS);
+		
 		// the following routines do nothing except a message if the corresponding file name is not given in cfg file.
 
 		// interesting but not needed to generate either large ray sets or luminance lookup tables
 		WriteCharacteristicCurve(interpRaySetData, rsc, logS);
+
 		WriteSkewnessDistribution(interpRaySetData, rsc, logS, rs);
 
 		// generate as many "interpolated" rays as you like -- not needed to generate luminance lookup tables
@@ -394,6 +523,7 @@ int main(int argc, char* argv[])
 		// compute average luminance values on a regular grid in phase space
 		// and write to binary output file
 		WriteLuminanceLookupTable(interpRaySetData, rsc, logS);
+
 		}
 	catch (TM25::TM25Error e)
 		{
@@ -408,4 +538,4 @@ int main(int argc, char* argv[])
 	//	std::cout << "unknown error" << std::endl;
 	//	}
  	return 0;
- 	}
+  	}

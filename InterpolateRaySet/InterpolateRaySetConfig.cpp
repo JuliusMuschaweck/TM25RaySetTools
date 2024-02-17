@@ -12,11 +12,13 @@ void TRaySetControlSection::AddAllowedValues()
 	values_.insert({ "selectByMaxNumber",	MakeEmptyTokenSequence() });
 	values_.insert({ "doDiagnostics",		MakeDefaultValueTokenSequence<Token::boolean>(true) });
 	values_.insert({ "restrictToRelVirtualFocusDistance",MakeEmptyTokenSequence() });
-	values_.insert({ "restrictToKz",		MakeEmptyTokenSequence() });
+	values_.insert({ "restrictToKz",		MakeEmptyTokenSequence() }); // backwards compatibility
+	values_.insert({ "restrictToMinKz",		MakeEmptyTokenSequence() });
 	values_.insert({ "restrictToXYBox",		MakeEmptyTokenSequence() });
 	values_.insert({ "restrictToFirstNRays",		MakeEmptyTokenSequence() });
+	values_.insert({ "restrictToEtendueThreshold", MakeDefaultValueTokenSequence<Token::real>(0.0) }); // ignore if 0.0
 	values_.insert({ "nClip",				MakeDefaultValueTokenSequence<Token::integer>(0) });
-	values_.insert({ "nOutputRays",			MakeDefaultValueTokenSequence<Token::integer>(1) });
+	values_.insert({ "nOutputRays",			MakeDefaultValueTokenSequence<Token::integer>(0) });
 	values_.insert({ "nNeighbors",			MakeDefaultValueTokenSequence<Token::integer>(10) });
 	values_.insert({ "outputRayFileName",	MakeEmptyTokenSequence() });
 	values_.insert({ "outputRayFileFormat",	MakeDefaultValueTokenSequence<Token::string>(std::string("TM25")) });

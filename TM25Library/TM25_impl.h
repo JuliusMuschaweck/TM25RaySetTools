@@ -407,6 +407,20 @@ namespace TM25
 		return rv;
 		}
 
+	template<typename RayArray>
+	double TBasicTM25RaySet<RayArray>::TotalSelectedPower() const
+		{
+		double rv = 0.0;
+		size_t maxIdx = NRays();
+		for (size_t i = 0; i < maxIdx; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			float p = *(r + 6);
+			rv += p;
+			}
+		return rv;
+		}
+
 	template<typename TRayArray>
 	void TBasicTM25RaySet<TRayArray>::ReadHeader(TReadFile& f)
 		{
