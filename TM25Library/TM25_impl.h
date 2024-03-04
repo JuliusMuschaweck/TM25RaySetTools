@@ -407,6 +407,20 @@ namespace TM25
 		return rv;
 		}
 
+	template<typename RayArray>
+	double TBasicTM25RaySet<RayArray>::TotalSelectedPower() const
+		{
+		double rv = 0.0;
+		size_t maxIdx = NRays();
+		for (size_t i = 0; i < maxIdx; ++i)
+			{
+			const float* r = ray_array_.GetRayDirect(i);
+			float p = *(r + 6);
+			rv += p;
+			}
+		return rv;
+		}
+
 	template<typename TRayArray>
 	void TBasicTM25RaySet<TRayArray>::ReadHeader(TReadFile& f)
 		{
@@ -994,17 +1008,18 @@ namespace TM25
 			std::memcpy(data_.data() + i * nItems_, ray.data(), sizeof(float) * N);
 			}
 	
-		template< typename Iter>
-		void TDefaultRayArray::SetRay(size_t i, Iter begin)
-			// copies ray into the i'th row, starting at begin, iterating over nItem floats
-			{
-			if (i >= nRays_)
-				{
-				std::stringstream s;
-				s << "TDefaultRayArray::SetRay<Iter>: i (" << i << ") >= NRays() (" << nRays_ << ")";
-				throw TM25Error(s.str());
-				}
+		//template< typename Iter>
+		//void TDefaultRayArray::SetRay(size_t i, Iter begin)
+		//	// copies ray into the i'th row, starting at begin, iterating over nItem floats
+		//	{
+		//	static_assert(sizeof(*begin) == sizeof(float));
+		//	if (i >= nRays_)
+		//		{
+		//		std::stringstream s;
+		//		s << "TDefaultRayArray::SetRay<Iter>: i (" << i << ") >= NRays() (" << nRays_ << ")";
+		//		throw TM25Error(s.str());
+		//		}
 
-			const float* ibegin = &(*begin);
-			}
+		//	const float* ibegin = &(*begin);
+		//	}
 	}

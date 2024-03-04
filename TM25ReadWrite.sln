@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29519.87
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TM25ReadWrite", "TM25ReadWrite\TM25ReadWrite.vcxproj", "{C1B234E2-237D-41C9-A16E-38290B39FAEC}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InterpolateRaySet", "InterpolateRaySet\InterpolateRaySet.vcxproj", "{029385D9-D291-404B-ADB0-54DFB779747E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConvertASAPToTM25", "ConvertASAPToTM25\ConvertASAPToTM25.vcxproj", "{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "InterpolateRaySetSetup", "InterpolateRaySetSetup\InterpolateRaySetSetup.vdproj", "{95260011-2587-4A12-A636-D559760D1548}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}.Release|x64.Build.0 = Release|x64
 		{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}.Release|x86.ActiveCfg = Release|Win32
 		{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}.Release|x86.Build.0 = Release|Win32
+		{95260011-2587-4A12-A636-D559760D1548}.Debug|x64.ActiveCfg = Debug
+		{95260011-2587-4A12-A636-D559760D1548}.Debug|x86.ActiveCfg = Debug
+		{95260011-2587-4A12-A636-D559760D1548}.Release|x64.ActiveCfg = Release
+		{95260011-2587-4A12-A636-D559760D1548}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

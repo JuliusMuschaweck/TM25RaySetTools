@@ -60,19 +60,38 @@ void TInterpolateRaySetData::SetTotalFlux(float newTotalFlux)
 	totalFlux_ = newTotalFlux;
 	}
 
+void TInterpolateRaySetData::RestrictToEtendueThreshold(double etendueThreshold, TLogPlusCout& logS)
+	{
+	double accumU = 0;
+	size_t i;
+	for (i = 0; i < idx_.size(); ++i)
+		{
+		size_t j = idx_[i];
+		accumU += volumes_[j];
+		if (accumU >= etendueThreshold)
+			break;
+		}
+	if (accumU <= etendueThreshold)
+		{
+		logS << "ray set etendue "<< accumU <<" is smaller than etendue limit "<<etendueThreshold<<" --nothing to restrict\n";
+		}
+	etendueThreshold_ = etendueThreshold;
+	idx_max_ = i;
+	}
+
 
 #ifdef NDEBUG
 #pragma optimize("",off)
 #endif
 TInterpolateRaySetData::TCharacteristicCurve TInterpolateRaySetData::CharacteristicCurve() const
 	{
-	// sort descending
-	std::vector<size_t> idx = TM25::IndexSort(luminances_, std::greater());
+	// sort descending, now done in Init
+	// std::vector<size_t> idx = TM25::IndexSort(luminances_, std::greater());
 	TCharacteristicCurve rv;
-	size_t nCells = idx.size();
+	size_t nCells = idx_.size();
 	rv.etendue_.reserve(nCells);
 	rv.luminance_.reserve(nCells);
-	for (size_t i : idx)
+	for (size_t i : idx_)
 		{
 		rv.etendue_.push_back(volumes_[i]);
 		rv.luminance_.push_back(luminances_[i]);
