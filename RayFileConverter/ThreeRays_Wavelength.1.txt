@@ -1,0 +1,15 @@
+# LightTools 2024.03 
+# Ray Data Export File
+lt_rdf_version: 2.0
+dataname: untitledRayData
+lt_datatype: radiant_power
+lt_far_field_data: no
+lt_color_info: wavelength
+lt_length_units: millimeters
+lt_data_origin:          0          0          0
+lt_radiant_flux: 0.003106601
+lt_startofdata
+    -0.6668399     -0.3333333         0.0001     -0.8660254   1.060575e-16            0.5    0.003106601            550
+     0.6666667      0.8334215         0.0001   4.050139e-17      0.6614378           0.75    0.004659902            450
+     0.1666667     -0.6670539         0.0001  -1.778639e-16     -0.9682459           0.25    0.001553301            620
+lt_endofdata

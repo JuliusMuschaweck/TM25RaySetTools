@@ -1,0 +1,5 @@
+[RayFileConverterControl]
+inputRayFileName = "ThreeRays_Wavelength_ZMX.ray"
+inputRayFileFormat = "ZemaxBinary"
+outputRayFileName = "ThreeRays_Wavelength_ZMW_to_LT.ray"
+outputRayFileFormat = "LightToolsBinary"

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <ReadFile.h>
 #include <WriteFile.h>
+#include <TM25.h>
 
 namespace TM25 {
 
@@ -19,8 +20,8 @@ namespace TM25 {
 		Origin_X{ 0.0f },
 		Origin_Y{ 0.0f },
 		Origin_Z{ 0.0f },
-		Flux{ 0.0f },				// total flux in watts or lumens according to DataType
-		Polarization{ 0 }		// 0 none, 1 with Stokes and Direction vectors
+		Flux{ 0.0f }				// total flux in watts or lumens according to DataType
+		//, Polarization{ 0 }		// 0 none, 1 with Stokes and Direction vectors
 		{};
 
 		TLightToolsRaySet::TLightToolsRaySet()
@@ -122,6 +123,15 @@ namespace TM25 {
 				{
 				AddRay(ray.x, ray.y, ray.z, ray.kx, ray.ky, ray.kz, ray.flux, wavelength_);
 				}
+
+			void TLightToolsRaySet::SetRaysDirect(const std::vector<float>& rays, size_t nRays, bool withWavelength)
+				{
+				size_t nItems = withWavelength ? 8 : 7;
+				if (rays.size() != nItems * nRays)
+					throw TM25Error("TLightToolsRaySet::SetRaysDirect: inconsistent ray array size");
+				data_.resize(nItems * nRays);
+				std::copy(rays.begin(), rays.end(), data_.begin());
+				}
 			
 			std::size_t TLightToolsRaySet::NRays() const
 				{
@@ -132,6 +142,21 @@ namespace TM25 {
 			TLightToolsHeader TLightToolsRaySet::Header() const
 				{
 				return header_;
+				}
+
+			void TLightToolsRaySet::SetHeader(const TLightToolsHeader& header)
+				{
+				header_ = header;
+				if (header_.ColorInfo == 2)
+					SetFormatType(TFormatType::spectral);
+				else
+					SetFormatType(TFormatType::flux_only);
+				if (header.DataType == 0)
+					SetFluxType(TFluxType::radiometric);
+				else
+					SetFluxType(TFluxType::photometric);
+				
+				wavelength_ = 550;
 				}
 
 			const std::vector<float>& TLightToolsRaySet::Data() const
@@ -200,7 +225,32 @@ namespace TM25 {
 				if (!test.first)
 					throw std::runtime_error("TLightToolsRaySet::Read file " + filename + ": inconsistent header: " + test.second);
 				}
-			//	void TLightToolsRaySet::Write(const std::string& filename) const;
+
+			void TLightToolsRaySet::Write(const std::string& filename) const
+				{
+				try
+					{
+					TM25::TWriteFile f(filename);
+					f.Write<TLightToolsHeader>(header_);
+					if (header_.MajorVersion == 3) // polarization present
+						f.Write<uint32_t>(1);
+					size_t nrays = NRays();
+					for (size_t i = 0; i < nrays; ++i)
+						{
+						const float* start = &(data_[i * 8]);
+						if (FormatType() == TFormatType::flux_only)
+							f.WriteRange(start, start + 7);
+						else
+							f.WriteRange(start, start + 8);
+						}
+					f.Write(std::array<char, 7>{'L', 'T', 'R', 'F', 'E', 'N', 'D'});
+					}
+
+				catch (std::runtime_error& err)
+					{
+					throw std::runtime_error("TLightToolsRaySet::Write: Error writing file " + filename + ": " + err.what());
+					}
+				}
 
 			std::pair<bool, std::string>  TLightToolsRaySet::HeaderSanityCheck() const
 				{

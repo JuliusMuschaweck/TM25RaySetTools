@@ -181,6 +181,9 @@ namespace TM25
 			std::vector<float> ExtractSingle(const TRaySetItems::TExtractionMap& em, size_t i) const;
 			// returns the data of the i'th ray, containing the items in em
 			// throw TM25Error if n >= NRays(), or if Items().Contains(em) == false
+			void ExtractSingleDirect(const TRaySetItems::TExtractionMap& em, size_t i, std::vector<float>& rv) const;
+			// writes the data of the i'th ray, containing the items in em, into rv
+			// no error checking, but resizes rv if needed, so empty rv is ok
 			TRayArray ExtractRange(const TRaySetItems::TExtractionMap& em,
 				size_t i_begin, size_t i_end) const;
 			// returns the data of the rays in range [i_begin, i_end[, containing the items in em.
@@ -188,6 +191,13 @@ namespace TM25
 			// i_end - i_begin rays, or no rays at all if i_end <= i_begin
 			// throw TM25Error if i_end >= NRays(), or if Items().Contains(em) == false
 			TRayArray ExtractAll(const TRaySetItems::TExtractionMap& em) const;
+			// returns the data of the all rays, containing the items in em
+			// throw TM25Error if Items().Contains(em) == false
+
+			TRayArray ExtractAll_Std_7() const; // x, y, z, kx, ky, kz, power
+			// returns the data of the all rays, containing the items in em
+			// throw TM25Error if Items().Contains(em) == false
+			TRayArray ExtractAll_Std_8() const; // x, y, z, kx, ky, kz, power, lambda
 			// returns the data of the all rays, containing the items in em
 			// throw TM25Error if Items().Contains(em) == false
 			TRayArray ExtractSelection(const TRaySetItems::TExtractionMap& em,
@@ -309,7 +319,7 @@ namespace TM25
 			// copies item into the j'th column
 			// throws TM25Error if item.size() != nRays or j >= nItems
 			void SetRayItem(size_t iray, size_t jitem, float r);
-			// throws TM25Error if iray >= nRays(), or jitem >= nItems()
+			// throws TM25Error if iray >= nRays(), or jitem >= nItems() 
 			std::vector<float> GetRay(size_t i) const;
 			// returns i'th row as vector -- the safer but slower way
 			// throws TM25Error if i >= nRays
@@ -326,6 +336,12 @@ namespace TM25
 			double TotalRayPower() const;
 
 			void SetDataDirect(const std::vector<float>& rhs, size_t confirm_nRays, size_t confirm_nItems); // rhs.size() must be nRays * nItems. 
+			void SetDataDirect(std::vector<float>&& rhs, size_t confirm_nRays, size_t confirm_nItems); // rhs.size() must be nRays * nItems. 
+
+			std::vector<float> ExtractData(); // postcondition: data_ empty, nRays_ == nItems_ == 0;
+
+			void ChangeMicronsToNanometers(); // if nItems_ == 8, multiply each 8th value with 1000
+
 		private:
 			size_t nRays_;
 			size_t nItems_;

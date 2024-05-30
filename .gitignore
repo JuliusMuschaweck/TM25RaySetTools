@@ -37,3 +37,6 @@
 /Cyl1M__Faberge_intpl.TM25RAY
 /Cyl1M_intpl.TM25RAY
 /LERTDUW_S2WP_green_interpolated__zplane_1M_nNeighbors_1.TM25RAY
+/RayFileConverter/x64/Debug
+/RayFileConverter/x64/Release
+/InterpolateRaySetSetup/Release

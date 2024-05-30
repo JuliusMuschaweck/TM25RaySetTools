@@ -48,6 +48,33 @@ namespace TM25
 		this->Read(filename);
 		};
 
+	TZemaxRaySet::TZemaxRaySet(const TZemaxHeader& zh, std::vector<float>&& raydata) // ray set for this header
+		{
+		// sanity check
+		size_t nItems = 7;
+		if (zh.ray_format_type == 2)
+			nItems = 8;
+		size_t nFloat = raydata.size();
+		size_t zero = nFloat % nItems;
+		size_t nRays = nFloat / nItems;
+		if ((zero != 0) || nRays != static_cast<size_t>(zh.NbrRays))
+			throw std::runtime_error("TZemaxRaySet::TZemaxRaySet: inconsistent raydata size");
+
+		header_ = zh;
+		// we use enums for format type and flux type for safe and explicit interface
+		if (zh.ray_format_type == 2)
+			format_type_ = TFormatType::spectral;
+		else
+			format_type_ = TFormatType::flux_only;
+		if (zh.flux_type == 1)
+			flux_type_ = TFluxType::photometric;
+		else
+			flux_type_ = TFluxType::radiometric;
+		wavelength_ = zh.Wavelength;
+		data_ = std::move(raydata);
+		}
+
+
 	void TZemaxRaySet::SetDescription(const std::string& s)
 		{
 		char* c = header_.Description;

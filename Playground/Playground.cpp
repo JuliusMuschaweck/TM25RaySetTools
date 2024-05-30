@@ -27,6 +27,12 @@ void TestBuf()
 
 int main()
 {
+	std::vector<float> dum;
+	std::cout << dum.capacity() << '\n';
+	dum.push_back(2.0f);
+	std::cout << dum.capacity() << '\n';
+
+
 	std::string s;
 	size_t tmp2 = sizeof(s); // 40 bytes, buffer[16]
 	std::cout << tmp2 << ' ' << (s.begin() == s.end()) << ' ' << s.capacity() <<

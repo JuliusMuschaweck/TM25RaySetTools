@@ -56,7 +56,11 @@ namespace TM25
 		TDefaultRayArray rays(header.n_rays_4_7_1_6, nItems);
 		auto zdatastart = zemaxRaySet.Data().begin();
 		for (size_t i = 0; i < header.n_rays_4_7_1_6; ++i)
+			{
 			rays.SetRay(i, &(*zdatastart));
+			zdatastart += nItems;
+			}
+		rays.ChangeMicronsToNanometers();
 		TTM25RaySet rv(header, rays);
 		return rv;
 		}
@@ -64,7 +68,7 @@ namespace TM25
 	TZemaxRaySet TM25ToZemaxBinary(const TTM25RaySet& rs)
 		{
 		TZemaxHeader zh;
-		TM25::TTM25Header tmh;
+		TM25::TTM25Header tmh = rs.Header();
 		zh.NbrRays = static_cast<uint32_t>(tmh.n_rays_4_7_1_6); // The number of rays in the file
 		// set description from name
 		std::string tmp = ToString(tmh.name_4_7_3_1);
@@ -103,7 +107,39 @@ namespace TM25
 		zh.RaySetFlux = zh.SourceFlux; // The flux in watts represented by this Ray Set
 		zh.DimensionUnits = 4; // METERS=0, IN=1, CM=2, FEET=3, MM=4
 
-//TODO: complete code
-
+		TRaySetItems items = rs.Items();
+		TRaySetItems needed;
+		needed.MarkAsPresent(RayItem::x);
+		needed.MarkAsPresent(RayItem::y);
+		needed.MarkAsPresent(RayItem::z);
+		needed.MarkAsPresent(RayItem::kx);
+		needed.MarkAsPresent(RayItem::ky);
+		needed.MarkAsPresent(RayItem::kz);
+		needed.MarkAsPresent(RayItem::phi);
+		if (zh.ray_format_type == 2) // wavelength per ray
+			{
+			needed.MarkAsPresent(RayItem::lambda);
+			}
+		if (items.ContainsItems(needed) == false)
+			{
+			throw std::runtime_error("TM25ToZemaxBinary: Not all required ray items present");
+			}
+		TRaySetItems::TExtractionMap extractionMap = items.ExtractionMap(needed);
+		TTM25RaySet::TRayArray rays = rs.ExtractAll(extractionMap);
+		
+		size_t n_rays = rays.NRays();
+		size_t n_items = rays.NItems();
+		float lam = zh.Wavelength;
+		std::vector<float> raydata;
+		for (size_t i = 0; i < n_rays; ++i)
+			{
+			const float* r = rays.GetRayDirect(i);
+			if (zh.ray_format_type == 2) // wavelength per ray
+				lam = *(r + 7);
+			std::array<float, 8> oneray({ *r, *(r + 1), *(r + 2), *(r + 3), *(r + 4), *(r + 5), *(r + 6), lam * 0.001f });
+			std::copy(oneray.begin(), oneray.end(), std::back_inserter(raydata));
+			}
+		TZemaxRaySet rv(zh, std::move(raydata));
+		return rv;
 		}
 	} // namespace

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -19,10 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{F59715DF-D1D1-4CD8-8351-BD7B09891DCF}</ProjectGuid>
+    <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ConvertASAPToTM25</RootNamespace>
+    <ProjectGuid>{24e76593-4505-4abb-a2ee-2d3b1c8e9102}</ProjectGuid>
+    <RootNamespace>RayFileConverter</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,47 +71,17 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
     <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\TM25ReadWrite;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\C++\Projects\TM25ReadWrite\TM25ReadWrite;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
     <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,36 +90,42 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -159,23 +135,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\TM25Library\ReadASAPRaySet.cpp" />
+    <ClCompile Include="..\TM25Library\ASCIIRayFile.cpp" />
+    <ClCompile Include="..\TM25Library\CfgFile.cpp" />
+    <ClCompile Include="..\TM25Library\LightToolsBinary.cpp" />
+    <ClCompile Include="..\TM25Library\ParseString.cpp" />
+    <ClCompile Include="..\TM25Library\RaySet_IO.cpp" />
     <ClCompile Include="..\TM25Library\ReadFile.cpp" />
-    <ClCompile Include="..\TM25Library\TestLinAlg.cpp" />
+    <ClCompile Include="..\TM25Library\Timer.cpp" />
     <ClCompile Include="..\TM25Library\TM25.cpp" />
     <ClCompile Include="..\TM25Library\TM25Util.cpp" />
+    <ClCompile Include="..\TM25Library\Tokenize.cpp" />
+    <ClCompile Include="..\TM25Library\TranslateLightTools.cpp" />
+    <ClCompile Include="..\TM25Library\TranslateZemax.cpp" />
     <ClCompile Include="..\TM25Library\WriteFile.cpp" />
-    <ClCompile Include="ConvertASAPToTM25.cpp" />
+    <ClCompile Include="..\TM25Library\ZemaxBinary.cpp" />
+    <ClCompile Include="RayFileConverter.cpp" />
+    <ClCompile Include="RayFileConverterCfg.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\TM25Library\LinAlg3.h" />
-    <ClInclude Include="..\TM25Library\ReadASAPRaySet.h" />
+    <ClInclude Include="..\TM25Library\ASCIIRayFile.h" />
+    <ClInclude Include="..\TM25Library\CfgFile.h" />
+    <ClInclude Include="..\TM25Library\LightToolsBinary.h" />
+    <ClInclude Include="..\TM25Library\ParseString.h" />
+    <ClInclude Include="..\TM25Library\RaySet_IO.h" />
     <ClInclude Include="..\TM25Library\ReadFile.h" />
     <ClInclude Include="..\TM25Library\Timer.h" />
     <ClInclude Include="..\TM25Library\TM25.h" />
     <ClInclude Include="..\TM25Library\TM25Util.h" />
-    <ClInclude Include="..\TM25Library\TM25_impl.h" />
+    <ClInclude Include="..\TM25Library\Tokenize.h" />
+    <ClInclude Include="..\TM25Library\TranslateLightTools.h" />
+    <ClInclude Include="..\TM25Library\TranslateZemax.h" />
     <ClInclude Include="..\TM25Library\WriteFile.h" />
+    <ClInclude Include="..\TM25Library\ZemaxBinary.h" />
+    <ClInclude Include="RayFileConverterCfg.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

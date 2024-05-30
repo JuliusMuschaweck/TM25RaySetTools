@@ -679,5 +679,38 @@ namespace TM25
 		data_ = rhs;
 		}
 
+	void TDefaultRayArray::SetDataDirect(std::vector<float>&& rhs, size_t confirm_nRays, size_t confirm_nItems) // rhs.size() must be nRays * nItems. 
+		{
+		if (confirm_nRays != nRays_)
+			throw std::runtime_error("TDefaultRayArray::SetDataDirect: nRays don't match");
+		if (confirm_nItems != nItems_)
+			throw std::runtime_error("TDefaultRayArray::SetDataDirect: nItems don't match");
+		if (rhs.size() != nRays_ * nItems_)
+			throw std::runtime_error("TDefaultRayArray::SetDataDirect: rhs has wrong size");
+		data_ = std::move(rhs);
+		}
+
+	std::vector<float> TDefaultRayArray::ExtractData() // postcondition: data_ empty, nRays_ == nItems_ == 0
+		{
+		nRays_ = nItems_ = 0;
+		std::vector<float> rv(std::move(data_));
+		return rv;
+		}
+
+	void TDefaultRayArray::ChangeMicronsToNanometers() // if nItems_ == 8, multiply each 8th value with 1000
+		{
+		if (nItems_ == 8)
+			{
+			auto ilam = data_.begin() + 7;
+			for (size_t i = 0; i < nRays_; ++i)
+				{
+				*ilam *= 1000.0f;
+				if (i+1 < nRays_)
+					ilam += 8;
+				}
+			}
+		}
+
+
 
 	} // namespace TM25

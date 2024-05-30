@@ -17,11 +17,11 @@ header:
 namespace TM25
 	{
 	// The header can be created as a struct, following the documentation.
+	// But: The field Polarization is only present iff MajorVersion == 3. Creates some trouble at reading and writing
+	// -> when reading or writing, if MajorVersion==3 read/write an additiona uint32_t
 	struct TLightToolsHeader
 		{
-		TLightToolsHeader(); // default empty header, zero rays, flux only, 0.55 microns
-		// definition from Zemax help file.
-		// quote: "OpticStudio only uses the NbrRays, DimensionUnits, ray_format_type, and flux_type parameters"
+		TLightToolsHeader(); // default empty header, version 2.0, radiometric, near field, no color info, mm, xyz=0,0,0, flux 0, no polarization
 		std::array<char, 4> Signature;	// "LTRF"
 		uint32_t	MajorVersion;		// default 2, polarization 3
 		uint32_t	MinorVersion;		// 0
@@ -35,7 +35,7 @@ namespace TM25
 		float		Origin_Y;
 		float		Origin_Z;
 		float		Flux;				// total flux in watts or lumens according to DataType
-		uint32_t	Polarization;		// 0 none, 1 with Stokes and Direction vectors
+		// uint32_t	Polarization;		// 0 none, 1 with Stokes and Direction vectors
 		};
 
 	// The actual ray set class. We ignore polarization for now
@@ -43,6 +43,7 @@ namespace TM25
 		{
 		public:
 			TLightToolsRaySet(); // zero rays, flux only, 0.55 microns, mm, at 0,0,0, flux 0
+
 
 			explicit TLightToolsRaySet(const std::string& filename); // read from ray data file
 
@@ -84,11 +85,14 @@ namespace TM25
 			// rays are always stored internally with a separate wavelength field
 			void AddRay(float x, float y, float z, float kx, float ky, float kz, float flux, float lam);
 			void AddRay(const TRay_lam& ray);
-			void AddRay(const TRay_fluxonly& ray); // 
+			void AddRay(const TRay_fluxonly& ray); //
+
+			void SetRaysDirect(const std::vector<float>& rays, size_t nRays, bool withWavelength);
 
 			std::size_t NRays() const;
 
 			TLightToolsHeader Header() const;
+			void SetHeader(const TLightToolsHeader& header);
 
 			const std::vector<float>& Data() const;
 

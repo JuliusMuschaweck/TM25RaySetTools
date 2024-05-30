@@ -131,11 +131,85 @@ namespace TM25
 	std::tuple<TVec3f, TVec3f, float> TBasicTM25RaySet<TRayArray>::RayLocDirFlux(size_t i) const
 		{
 		if (i >= NRays())
-			throw std::runtime_error("TBasicTM25RaySet<TRayArray>::RayLocDirFlux: i out of range");
+			throw TM25Error("TBasicTM25RaySet<TRayArray>::RayLocDirFlux: i out of range");
 		const float* fp = ray_array_.GetRayDirect(i);
 		ptrdiff_t ipc = PowerColumn();
 		return std::tuple<TVec3f, TVec3f, float>(TVec3f{ *fp, *(fp + 1), *(fp + 2) }, TVec3f{ *(fp + 3),*(fp + 4),*(fp + 5) }, *(fp + ipc));
 		}
+
+	template<typename TRayArray>
+	std::vector<float> TBasicTM25RaySet<TRayArray>::ExtractSingle(const TRaySetItems::TExtractionMap& em, size_t i) const
+		// returns the data of the i'th ray, containing the items in em
+		// throw TM25Error if n >= NRays(), or if Items().Contains(em) == false
+		{
+		std::vector<float> rv;
+		ExtractSingleDirect(em, i, rv);
+		return rv;
+		}
+
+	template<typename TRayArray>
+	void TBasicTM25RaySet<TRayArray>::ExtractSingleDirect(const TRaySetItems::TExtractionMap& em, size_t i, std::vector<float>& rv) const
+		// writes the data of the i'th ray, containing the items in em, into rv
+		// no error checking, but resizes rv if needed, so empty rv is ok
+		{
+		const float* r = ray_array_.GetRayDirect(i);
+		rv.clear();
+		rv.reserve(em.size());
+		for (size_t j : em)
+			{
+			if (j >= ray_array_.NItems())
+				throw TM25Error("TBasicTM25RaySet<TRayArray>::ExtractSingle: extraction map member ooB");
+			const float* ff = r + j;
+			rv.push_back(*ff);
+			}
+		}
+
+
+	template<typename TRayArray>
+	TRayArray TBasicTM25RaySet<TRayArray>::ExtractRange(const TRaySetItems::TExtractionMap& em,
+		size_t i_begin, size_t i_end) const
+		{
+		if (i_begin > i_end)
+			throw TM25Error("TBasicTM25RaySet<TRayArray>::ExtractRange: i_begin > i_end");
+		TRayArray rv(i_end - i_begin, em.size());
+		std::vector<float> ray_holder(em.size());
+		for (size_t i = i_begin; i < i_end; ++i)
+			{
+			ExtractSingleDirect(em, i - i_begin, ray_holder);
+			rv.SetRay(i - i_begin, ray_holder);
+			}
+		return rv;
+		}
+	// returns the data of the rays in range [i_begin, i_end[, containing the items in em.
+	// note that i_end is one beyond the end of the range. The result will contain
+	// i_end - i_begin rays, or no rays at all if i_end <= i_begin
+	// throw TM25Error if i_end >= NRays(), or if Items().Contains(em) == false
+	template<typename TRayArray>
+	TRayArray TBasicTM25RaySet<TRayArray>::ExtractAll(const TRaySetItems::TExtractionMap& em) const
+		{
+		return ExtractRange(em, 0, ray_array_.NRays());
+		}
+
+	// returns the data of the all rays, containing the items in em
+	// throw TM25Error if Items().Contains(em) == false
+	template<typename TRayArray>
+	TRayArray TBasicTM25RaySet<TRayArray>::ExtractSelection(const TRaySetItems::TExtractionMap& em,
+		const std::vector<size_t>& idx) const
+		{
+		TRayArray rv(idx.size(), em.size());
+		std::vector<float> ray_holder(em.size());
+		size_t i = 0;
+		for (size_t iidx: idx)
+			{
+			ExtractSingleDirect(em, iidx , ray_holder);
+			rv.SetRay(i, ray_holder);
+			}
+		return rv;
+		}
+	// returns the data of the rays according to the indices in idx, 
+	// containing the items in em
+	// throw TM25Error if any element of idx >= NRays(), or if Items().Contains(em) == false
+
 
 	template<typename TRayArray>
 	TVec3f TBasicTM25RaySet<TRayArray>::VirtualFocus() const

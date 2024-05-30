@@ -169,6 +169,7 @@
   <ItemGroup>
     <ClCompile Include="..\TM25Library\ASCIIRayFile.cpp" />
     <ClCompile Include="..\TM25Library\CfgFile.cpp" />
+    <ClCompile Include="..\TM25Library\LightToolsBinary.cpp" />
     <ClCompile Include="..\TM25Library\ParseString.cpp" />
     <ClCompile Include="..\TM25Library\ReadFile.cpp" />
     <ClCompile Include="..\TM25Library\Timer.cpp" />
@@ -183,13 +184,13 @@
     <ClCompile Include="InterpolateRaySetData.cpp" />
     <ClCompile Include="InterpolateRaySet_IO.cpp" />
     <ClCompile Include="KDTree.cpp" />
-    <ClCompile Include="LightToolsBinary.cpp" />
     <ClCompile Include="PhaseSpace.cpp" />
     <ClCompile Include="PhaseSpaceGrid.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\TM25Library\ASCIIRayFile.h" />
     <ClInclude Include="..\TM25Library\CfgFile.h" />
+    <ClInclude Include="..\TM25Library\LightToolsBinary.h" />
     <ClInclude Include="..\TM25Library\LinAlg3.h" />
     <ClInclude Include="..\TM25Library\ParseString.h" />
     <ClInclude Include="..\TM25Library\ReadFile.h" />
@@ -205,7 +206,6 @@
     <ClInclude Include="InterpolateRaySetData.h" />
     <ClInclude Include="InterpolateRaySet_IO.h" />
     <ClInclude Include="KDTree.h" />
-    <ClInclude Include="LightToolsBinary.h" />
     <ClInclude Include="PhaseSpace.h" />
     <ClInclude Include="PhaseSpaceGrid.h" />
     <ClInclude Include="PhaseSpaceImpl.h" />

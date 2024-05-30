@@ -47,6 +47,8 @@ namespace TM25
 			TZemaxRaySet(); // zero rays, flux only, 0.55 microns
 
 			explicit TZemaxRaySet(const std::string& filename); // read from ray data file
+
+			TZemaxRaySet(const TZemaxHeader& zh, std::vector<float>&& raydata); // ray set for this header
 			void SetDescription(const std::string& s);	// set the description field of the header
 			std::string Description() const;			// get the description field of the header
 
@@ -100,9 +102,6 @@ namespace TM25
 			void Write(const std::string& filename) const;
 
 			std::pair<bool, std::string>  HeaderSanityCheck() const;
-
-
-
 
 		private:
 			TZemaxHeader header_;

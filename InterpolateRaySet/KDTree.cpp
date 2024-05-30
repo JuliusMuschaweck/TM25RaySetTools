@@ -26,7 +26,7 @@ namespace KDTree
 
 	void TKDTree::CreateTree()
 		{
-		Def::TReal big = std::numeric_limits<Def::TReal>::max();
+		constexpr Def::TReal big = std::numeric_limits<Def::TReal>::max();
 		// construct root node
 //		std::cout << sizeof(TNode) << std::endl;
 //		std::cout << "reserving " << 2 * pts_.size() * sizeof(TNode) << " bytes of memory for nodes " << std::endl;
@@ -576,7 +576,7 @@ namespace KDTree
 		std::fill(nodeIdx_.begin(), nodeIdx_.end(), TNodeIdx{ invalidIdx });
 		for (size_t d = 0; d < Def::dim; ++d)
 			ptCoords_[d].reserve(pts_.size());
-		Def::TReal big = std::numeric_limits<Def::TReal>::max();
+		constexpr Def::TReal big = std::numeric_limits<Def::TReal>::max();
 		Def::TKDPoint p0; p0.fill(big);
 		Def::TKDPoint p1; p1.fill(-big);
 		for (const auto& p : pts_)
@@ -725,7 +725,7 @@ namespace KDTree
 
 	std::pair<Def::TKDPoint, Def::TKDPoint> BoundingBox(const Def::TKDPoints& pts)
 		{
-		Def::TReal big = std::numeric_limits<Def::TReal>::max();
+		constexpr Def::TReal big = std::numeric_limits<Def::TReal>::max();
 		Def::TKDPoint p0; p0.fill(big);
 		Def::TKDPoint p1; p1.fill(-big);
 		for (const auto& p : pts)
