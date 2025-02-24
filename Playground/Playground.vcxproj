@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -82,7 +82,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -93,7 +93,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,7 +145,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -158,6 +158,7 @@
     <ClInclude Include="..\InterpolateRaySet\KDTree.h" />
     <ClInclude Include="..\TM25Library\ASCIIRayFile.h" />
     <ClInclude Include="..\TM25Library\ParseString.h" />
+    <ClInclude Include="..\TM25Library\ReadASCIIMatrix.h" />
     <ClInclude Include="..\TM25Library\ReadFile.h" />
     <ClInclude Include="..\TM25Library\Timer.h" />
     <ClInclude Include="..\TM25Library\TM25.h" />
@@ -169,6 +170,7 @@
     <ClCompile Include="..\InterpolateRaySet\KDTree.cpp" />
     <ClCompile Include="..\TM25Library\ASCIIRayFile.cpp" />
     <ClCompile Include="..\TM25Library\ParseString.cpp" />
+    <ClCompile Include="..\TM25Library\ReadASCIIMatrix.cpp" />
     <ClCompile Include="..\TM25Library\ReadFile.cpp" />
     <ClCompile Include="..\TM25Library\Timer.cpp" />
     <ClCompile Include="..\TM25Library\TM25.cpp" />

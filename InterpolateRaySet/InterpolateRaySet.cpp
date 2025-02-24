@@ -16,6 +16,7 @@
 #include "InterpolateRaySet_IO.h"
 #include "InterpolateRaySetData.h"
 #include "PhaseSpaceGrid.h"
+#include <LogPlusCout.h>
 
 int Test()
 	{

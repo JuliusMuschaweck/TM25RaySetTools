@@ -2,7 +2,7 @@
 #include "ReadFile.h"
 #include <charconv>
 #include <limits>
-#include <Timer.h>
+#include "Timer.h"
 
 namespace TM25
 	{

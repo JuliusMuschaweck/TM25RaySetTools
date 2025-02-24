@@ -12,6 +12,7 @@
 /Playground/x64
 /TM25ReadWrite/x64/
 /TM25ReadWrite/Debug/
+/CreatePointSourceRayFile/x64/
 /rayfile_LERTDUW_S2WP_green_20M_20161013_IES_TM25.TM25RAY
 *.user
 *.filters

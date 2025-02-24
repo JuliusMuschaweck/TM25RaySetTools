@@ -38,6 +38,10 @@ namespace TM25
 	template<typename Compare = decltype(std::less())>
 	std::vector<size_t> IndexSort(const std::vector<float>& v, Compare comp = std::less());
 
+	std::string_view TrimWhiteSpace(std::string_view s); // trims ' ' and '\t' from left and right
+
+	std::vector<std::string_view> Tokenize(std::string_view s, std::string_view delims);
+
 // template definitions
 
 	template< int N>

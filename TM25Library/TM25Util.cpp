@@ -47,4 +47,29 @@ namespace TM25
 				break;
 			}
 		}
-	}
+
+	std::string_view TrimWhiteSpace(std::string_view s)
+		{
+		std::string_view rv(s);
+		rv.remove_prefix(std::min(rv.find_first_not_of(" \t"), rv.size()));
+		auto trim_pos = rv.find_last_not_of(" \t");
+		rv.remove_suffix(rv.size() - trim_pos - 1);
+		return rv;
+		}
+
+	std::vector<std::string_view> Tokenize(std::string_view s, std::string_view delims)
+		{
+		std::vector<std::string_view> rv;
+		size_t pos = s.find_first_not_of(delims);
+		size_t end = s.size();
+		while (pos < end)
+			{
+			size_t count = s.find_first_of(delims, pos) - pos;
+			rv.push_back(s.substr(pos, count));
+			pos = s.find_first_not_of(delims, pos+count);
+			}
+		return rv;
+		}
+
+	} // namespace TM25
+

@@ -1,0 +1,18 @@
+		A comment line 
+
+		Empty lines are comments, too
+		nx: # of x values
+		2
+		followed by nx single number lines
+		1
+		2
+		ny: # of y values
+		3
+		followed by ny single number lines
+		10
+		11
+		12
+		followed by nx by ny numbers
+		2 3
+		1 2 3
+		10 11 12

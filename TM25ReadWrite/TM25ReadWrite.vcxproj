@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\TM25Library\ReadASCIIMatrix.cpp" />
     <ClCompile Include="..\TM25Library\ReadFile.cpp" />
     <ClCompile Include="..\TM25Library\TestLinAlg.cpp" />
     <ClCompile Include="..\TM25Library\TM25.cpp" />
@@ -28,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\TM25Library\LinAlg3.h" />
+    <ClInclude Include="..\TM25Library\ReadASCIIMatrix.h" />
     <ClInclude Include="..\TM25Library\ReadFile.h" />
     <ClInclude Include="..\TM25Library\TM25.h" />
     <ClInclude Include="..\TM25Library\TM25Util.h" />
@@ -91,14 +93,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\jm\Documents\BUSINESS\Software_JM\OpenSource\TM25RaySetTools\TM25Library;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\TM25Library;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -124,7 +126,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -161,7 +163,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

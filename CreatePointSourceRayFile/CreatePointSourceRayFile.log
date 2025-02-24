@@ -1,0 +1,23 @@
+config file Test.cfg successfully read, file content:
+%  
+% called with configuration file Test.cfg
+% which has the following content:
+[Variables]
+hopp="topp"
+answerToQuestionOfLifeTheUniverseAndEverything=42
+flag=true
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+[PointSourceRayFileControl]
+inputIntensityFileName = "farfield.txt"
+delimiters = " \t"
+equidistance_rel_epsilon = 1e-11
+logFileName = "CreatePointSourceRayFile.log"
+consoleOutput = true
+doDiagnostics = true
+nOutputRays = 100000
+rel_threshold = 0.1
+outputRayFileName = "farfield.TM25ray"
+setTotalFlux = 1
+
+%% end of configuration file
+

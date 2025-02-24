@@ -9,10 +9,12 @@
 #include <array>
 #include <vector> 
 #include "../InterpolateRaySet/KDTree.h"
-#include <ParseString.h>
+#include "ParseString.h"
 #include <ReadFile.h>
 #include <ASCIIRayFile.h>
 #include <Tokenize.h>
+#include <ReadASCIIMatrix.h>
+
 
 void TestBuf()
 	{
@@ -27,6 +29,22 @@ void TestBuf()
 
 int main()
 {
+	std::string fn2 = "..\\TM25Library\\TestASCIIMatrix.txt";
+	TM25::TNumberList nl;
+	nl.Read(fn2);
+
+	TM25::TVectorMatrixList vml;
+	vml.Read(fn2);
+
+	TM25::TReadASCIIMatrix am;
+	am.Read(fn2, " \t,;", 1e-10);
+
+	double test = am.Interpolate(1, 10); 
+	test = am.Interpolate(1.1, 10);
+	test = am.Interpolate(1, 20.1);
+	test = am.Interpolate(2, 10);
+
+
 	std::vector<float> dum;
 	std::cout << dum.capacity() << '\n';
 	dum.push_back(2.0f);

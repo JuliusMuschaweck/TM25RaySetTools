@@ -6,6 +6,7 @@
 #include <LinAlg3.h>
 #include "InterpolateRaySet_IO.h"
 #include "KDTree.h"
+#include <LogPlusCout.h>
 #include <numeric>
 
 #define MULTITHREAD
