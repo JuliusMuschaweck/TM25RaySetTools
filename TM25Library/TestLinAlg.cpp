@@ -73,7 +73,7 @@ void TestLinAlg3()
 	//// Norm
 	//template< typename R>
 	//R Norm(const TVec3<R>& rhs);
-	assert(Norm(V3({ 1,2,3 })) == sqrt(1.0f + 2 * 2 + 3 * 3));
+	assert(Norm(V3({ 1,2,3 })) == sqrtf(1.0f + 2 * 2 + 3 * 3));
 	//
 	//// ***************  matrix operations *****************************
 	//
@@ -266,7 +266,7 @@ void TestLinAlg3()
 	V3{16,19,33},
 	{40,43,75},
 	{40,35,45} };
-	assert((FrobeniusNorm(a)) == (sqrt(R(15630))));
+	assert((FrobeniusNorm(a)) == (sqrtf(R(15630))));
 	}
 	//
 	//// generators
