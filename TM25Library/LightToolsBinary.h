@@ -82,8 +82,8 @@ namespace TM25
 					flux;
 				};
 
-			// rays are always stored internally with a separate wavelength field
 			void AddRay(float x, float y, float z, float kx, float ky, float kz, float flux, float lam);
+			void AddRay(float x, float y, float z, float kx, float ky, float kz, float flux);
 			void AddRay(const TRay_lam& ray);
 			void AddRay(const TRay_fluxonly& ray); //
 
@@ -109,6 +109,7 @@ namespace TM25
 			float wavelength_;
 
 			std::vector<float> data_;
+			size_t nItems_; // 7 if only flux, 8 if wavelength
 		};
 	} // namespace
 #endif // header include

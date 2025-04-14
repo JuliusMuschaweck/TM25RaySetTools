@@ -234,6 +234,9 @@ namespace TM25
 			// scramble ray sequence, separately for selection and remainder
 			void Shuffle();
 
+			// scale all ray powers with factor
+			void ScalePowers(double fac);
+
 			// diagnostic output
 			std::string Diagnostics() const;
 
@@ -332,6 +335,8 @@ namespace TM25
 			std::pair<TVec3f,TVec3f> BoundingBox() const; // no column information needed -- x and k are in the first six columns
 
 			void Shuffle(size_t ibegin, size_t iend); // Fisher-Yates shuffle of range [ibegin;iend[
+			
+			void ScalePowers(double fac); // scale all ray powers with factor
 
 			double TotalRayPower() const;
 

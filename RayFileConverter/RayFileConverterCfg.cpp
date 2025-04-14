@@ -11,6 +11,12 @@ void TRayFileConverterControlSection::AddAllowedValues()
 	values_.insert({ "consoleOutput",		MakeDefaultValueTokenSequence<Token::boolean>(true) });
 	values_.insert({ "outputRayFileName",	MakeEmptyTokenSequence() });
 	values_.insert({ "outputRayFileFormat",	MakeDefaultValueTokenSequence<Token::string>(std::string("TM25")) });
+	values_.insert({ "scalePowerFactor",	MakeDefaultValueTokenSequence<Token::real>(1.0)});
+	// scramble -> bool (false)
+	// stripWavelength -> bool (false)
+	// setFixedWavelength -> real (0)
+	// move -> real(3) vector (0,0,0)
+	// traceToVirtualFocus -> bool (false)
 	}
 
 void TRayFileConverterControlSection::AddAllowedKeywords()

@@ -22,8 +22,8 @@ namespace TM25
 			{
 			header.spectrum_type_4_7_1_9 = 1; // single wavelength for all rays
 			header.lambda_4_7_1_10 = zh.Wavelength * 1000; // Zemax: microns, TM25: nm
-			header.lambda_min_4_7_1_11 = zemaxRaySet.MinWavelength();
-			header.lambda_max_4_7_1_12 = zemaxRaySet.MaxWavelength();
+			header.lambda_min_4_7_1_11 = zemaxRaySet.MinWavelength() * 1000;
+			header.lambda_max_4_7_1_12 = zemaxRaySet.MaxWavelength() * 1000;
 			header.lambda_flag_4_7_2_4 = false;
 			}
 		if (zemaxRaySet.FluxType() == TZemaxRaySet::TFluxType::radiometric)
@@ -49,6 +49,7 @@ namespace TM25
 			throw std::runtime_error("ZemaxBinaryToTM25: fatal error in TM25 header sanity check: " + chk.msg);
 		
 		size_t nItems = 0;
+		
 		if (header.spectrum_type_4_7_1_9 == 1) // single wavelength
 			nItems = 7;
 		else

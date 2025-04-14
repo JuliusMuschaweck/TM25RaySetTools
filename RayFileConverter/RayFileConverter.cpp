@@ -26,9 +26,12 @@ int main(int argc, char* argv[])
 		const TSection& rsc = cfg.Section("RayFileConverterControl");
 		TLogPlusCout logS(rsc.Bool("consoleOutput"), rsc.String("logFileName"));
 		// read the raw input ray file
-		logS << "reading ray file " << rsc.String("inputRayFileFormat") << endl;
+		logS << "reading ray file " 
+			<< rsc.String("inputRayFileName") << " ("<<rsc.String("inputRayFileFormat") << ")" << endl;
 		TM25::TTM25RaySet rs = ReadRaySet(rsc, logS);
-		logS << "writing ray file " << rsc.String("outputRayFileFormat") << endl;
+		logS << "writing ray file "
+			<< rsc.String("outputRayFileName") << " (" << rsc.String("outputRayFileFormat") << ")" << endl;
+		rs.ScalePowers(rsc.Real("scalePowerFactor"));
 		WriteRaySet(rs, rsc, logS);
 		}
 	catch (TM25::TM25Error e)
@@ -45,7 +48,7 @@ int main(int argc, char* argv[])
 	//	}
 	return 0;
 
-     }
+    }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
 // Debug program: F5 or Debug > Start Debugging menu

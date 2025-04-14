@@ -410,6 +410,12 @@ namespace TM25
 		}
 
 	template<typename TRayArray>
+	void TBasicTM25RaySet<TRayArray>::ScalePowers(double fac)
+		{
+		ray_array_.ScalePowers(fac);
+		}
+
+	template<typename TRayArray>
 	std::string TBasicTM25RaySet<TRayArray>::Diagnostics() const
 		{
 		std::stringstream rv;

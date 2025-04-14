@@ -655,6 +655,19 @@ namespace TM25
 				}
 			}
 		}
+
+	void TDefaultRayArray::ScalePowers(double fac) // scale all ray powers with factor
+		{
+		size_t maxIdx = NRays();
+		for (size_t i = 0; i < maxIdx; ++i)
+			{
+			float* r = GetRayDirect(i);
+			float* p = (r + 6);
+			(*p) *= fac;
+			}
+		}
+
+
 	double TDefaultRayArray::TotalRayPower() const
 		{
 		double rv = 0.0;

@@ -38,8 +38,9 @@ namespace TM25
 		: // header_ default ctor is just fine
 		format_type_{ TFormatType::flux_only },
 		flux_type_{ TFluxType::radiometric },
-		wavelength_{ float(0.55) }
+		wavelength_{ float(0.55) },
 		// data_ default ctor is just fine
+		nItems_{ 7 } // for flux_only
 		{
 		};
 
@@ -51,12 +52,12 @@ namespace TM25
 	TZemaxRaySet::TZemaxRaySet(const TZemaxHeader& zh, std::vector<float>&& raydata) // ray set for this header
 		{
 		// sanity check
-		size_t nItems = 7;
+		nItems_ = 7;
 		if (zh.ray_format_type == 2)
-			nItems = 8;
+			nItems_ = 8;
 		size_t nFloat = raydata.size();
-		size_t zero = nFloat % nItems;
-		size_t nRays = nFloat / nItems;
+		size_t zero = nFloat % nItems_;
+		size_t nRays = nFloat / nItems_;
 		if ((zero != 0) || nRays != static_cast<size_t>(zh.NbrRays))
 			throw std::runtime_error("TZemaxRaySet::TZemaxRaySet: inconsistent raydata size");
 
@@ -127,10 +128,12 @@ namespace TM25
 
 	float TZemaxRaySet::MinWavelength() const
 		{
+		if (FormatType() == TFormatType::flux_only)
+			return Wavelength();
 		float rv = std::numeric_limits<float>::max();
 		for (size_t i = 0; i < NRays(); ++i)
 			{
-			float tmp = data_[i * 8 + 7];
+			float tmp = data_[i * nItems_ + 7]; // nItems must be 8!
 			if (tmp < rv)
 				rv = tmp;
 			}
@@ -139,10 +142,12 @@ namespace TM25
 
 	float TZemaxRaySet::MaxWavelength() const
 		{
+		if (FormatType() == TFormatType::flux_only)
+			return Wavelength();
 		float rv = std::numeric_limits<float>::min();
 		for (size_t i = 0; i < NRays(); ++i)
 			{
-			float tmp = data_[i * 8 + 7];
+			float tmp = data_[i * nItems_ + 7];
 			if (tmp > rv)
 				rv = tmp;
 			}
@@ -167,18 +172,30 @@ namespace TM25
 		data_.push_back(lam);
 		}
 
+	void TZemaxRaySet::AddRay(float x, float y, float z, float kx, float ky, float kz, float flux)
+		{
+		data_.push_back(x);
+		data_.push_back(y);
+		data_.push_back(z);
+		data_.push_back(kx);
+		data_.push_back(ky);
+		data_.push_back(kz);
+		data_.push_back(flux);
+		}
+
+
 	void TZemaxRaySet::AddRay(const TRay_lam& ray)
 		{
 		AddRay(ray.x, ray.y, ray.z, ray.kx, ray.ky, ray.kz, ray.flux, ray.lam);
 		}
 	void TZemaxRaySet::AddRay(const TRay_fluxonly& ray)
 		{
-		AddRay(ray.x, ray.y, ray.z, ray.kx, ray.ky, ray.kz, ray.flux, header_.Wavelength);
+		AddRay(ray.x, ray.y, ray.z, ray.kx, ray.ky, ray.kz, ray.flux);
 		}
 
 	std::size_t TZemaxRaySet::NRays() const
 		{
-		std::size_t rv = data_.size() / 8;
+		std::size_t rv = data_.size() / nItems_;
 		return rv;
 		}
 
@@ -193,13 +210,19 @@ namespace TM25
 			TZemaxHeader h;
 			TM25::TReadFile f(filename);
 			h = f.Read<TZemaxHeader>();
-			if (h.Identifier != 1010)
+			if (h.Identifier != 1010 && h.Identifier != 8675309) // 8675309 added 31.3.25, found in Nichia ray file
 				throw std::runtime_error("TZemaxRaySet::Read: Wrong format identifier in header of file " + filename);
 			TFormatType ft;
 			if (h.ray_format_type == 0)
+				{
 				ft = TFormatType::flux_only;
+				nItems_ = 7;
+				}
 			else if (h.ray_format_type == 2)
+				{
 				ft = TFormatType::spectral;
+				nItems_ = 8;
+				}
 			else
 				throw std::runtime_error("TZemaxRaySet::Read: Unknown ray format type in header of file " + filename);
 			header_ = h;
@@ -236,9 +259,9 @@ namespace TM25
 			size_t nrays = header_.NbrRays;
 			for (size_t i = 0; i < nrays; ++i)
 				{
-				data_[i * 8] *= fac;		// x
-				data_[i * 8 + 1] *= fac; // y
-				data_[i * 8 + 2] *= fac; // z
+				data_[i * nItems_] *= fac;		// x
+				data_[i * nItems_ + 1] *= fac; // y
+				data_[i * nItems_ + 2] *= fac; // z
 				}
 			header_.DimensionUnits = 4;
 			}
@@ -265,7 +288,7 @@ namespace TM25
 			size_t nrays = NRays();
 			for (size_t i = 0; i < nrays; ++i)
 				{
-				const float* start = &(data_[i * 8]);
+				const float* start = &(data_[i * nItems_]);
 				if (FormatType() == TFormatType::flux_only)
 					f.WriteRange(start, start + 7);
 				else
@@ -291,7 +314,7 @@ namespace TM25
 				rv.second = rv.second + ", " + msg;
 				}
 			};
-		check(header_.Identifier == 1010, "wrong format version ID");
+		check((header_.Identifier == 1010) || (header_.Identifier == 8675309), "wrong format version ID"); // 8675309 added 31.3.25 found in Nichia ray file
 		check(header_.NbrRays == NRays(), "wrong number of rays");
 		check((header_.ray_format_type == 0) || (header_.ray_format_type == 2), "unknown ray format type");
 		check((header_.flux_type == 0) || (header_.flux_type == 1), "unknown flux type");
