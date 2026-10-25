@@ -36,7 +36,8 @@ namespace TM25
 
 	size_t TWriteFile::WriteUTF32TextBlock(const std::u32string & s, size_t nBytes)
 		{
-		size_t maxChar = nBytes % 4;
+		// size_t maxChar = nBytes % 4;
+		size_t maxChar = nBytes / 4; // fixed, thanks to Holger Trahe 2026-10-25
 		size_t nChar = std::min(maxChar, s.size());
 		WriteBytes(s.data(), nChar * sizeof(char32_t));
 		size_t nPad = nBytes - nChar * sizeof(char32_t);
